@@ -1,19 +1,21 @@
-/* games/hunt.js — 1. 网格寻宝 (spec §3.1)
- * 5x5 网格，随机起点/宝藏/2-3 个障碍。拖积木（Move Forward / Turn Left / Turn Right / Grab）
- * 排出程序 → 按 ▶ 运行 → 机器人按序走格。撞障碍/出界=失败重试。
+/* games/hunt.js — 1. 网格寻宝 (spec §3.1 / teaching-redesign-v2 §「hunt 网格寻宝」)
+ * 机制不变（5x5 网格拖积木编程，已验证可玩）。本次只换美术：
+ * 地块用 assets/art.js 的 tiles.grass/rock/gem/flag，机器人用 roverTop（DOM/SVG 图层
+ * 平移+旋转补间，弃用旧 Canvas 渲染器 games/_rover-renderer.js —— 该文件保留不删，只是
+ * 这一关不再 import 它）。
  * 星级：3=最优步数，2=多≤3步，1=完成（"步数"=实际用到 Grab 为止消耗的指令数，
  * 与 BFS 算出的最短指令数——含转向——比较）。
  */
 
 import { createTray, createSequence } from '../js/blocks-ui.js';
-import { setupHiDPICanvas, drawRover, createTicker, animate, Easing } from './_rover-renderer.js';
+import { roverTop, tiles } from '../assets/art.js';
 
 const GRID_SIZE = 5;
-const CANVAS_PAD = 10; // 给最外圈格子的机器人轮子留出空间，避免贴边裁切
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // up, right, down, left（facing 0-3）
-const MOVE_DURATION = 380;
-const TURN_DURATION = 260;
-const STEP_GAP = 140;
+const MOVE_MS = 380;
+const TURN_MS = 260;
+const STEP_GAP_MS = 150;
+const BUMP_MS = 260;
 
 function randInt(n) { return Math.floor(Math.random() * n); }
 function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
@@ -77,128 +79,163 @@ function generateLevel() {
   };
 }
 
+/* --------------------------------------------------------------------------
+ * 一次性注入本关专属样式（网格地块 + roverTop 图层的 transform 接口）
+ * -------------------------------------------------------------------------- */
+let stylesInjected = false;
+function injectStylesOnce() {
+  if (stylesInjected) return;
+  stylesInjected = true;
+  const style = document.createElement('style');
+  style.textContent = `
+    .hunt-stage-card { min-height: 54vh; display:flex; flex-direction:column; }
+    .hunt-grid-outer { flex:1; display:flex; align-items:center; justify-content:center; padding: 6px 0; }
+    .hunt-grid {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(${GRID_SIZE}, 1fr);
+      grid-template-rows: repeat(${GRID_SIZE}, 1fr);
+      width: min(74vw, 58vh);
+      aspect-ratio: 1 / 1;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: inset 0 0 0 2.5px rgba(35,39,46,.14);
+    }
+    .hunt-cell { width:100%; height:100%; line-height:0; }
+    .hunt-cell svg { width:100%; height:100%; display:block; }
+    .hunt-rover-pos {
+      position: absolute; left:0; top:0;
+      width: ${100 / GRID_SIZE}%; height: ${100 / GRID_SIZE}%;
+      display:flex; align-items:center; justify-content:center;
+      transition: left ${MOVE_MS}ms ease, top ${MOVE_MS}ms ease;
+      pointer-events:none;
+      filter: drop-shadow(0 4px 4px rgba(0,0,0,.28));
+    }
+    .hunt-rover-rot {
+      width:80%; height:80%;
+      transition: transform ${TURN_MS}ms cubic-bezier(.34,1.2,.4,1);
+    }
+    .hunt-rover-rot svg { width:100%; height:100%; display:block; }
+    .hunt-rover-squash { width:100%; height:100%; }
+    .hunt-rover-squash.hunt-bump { animation: hunt-bump ${BUMP_MS}ms ease; }
+    @keyframes hunt-bump {
+      0%, 100% { transform: scale(1,1); }
+      45% { transform: scale(1.22, 0.8); }
+      70% { transform: scale(0.92, 1.1); }
+    }
+    .hunt-idle-bob { animation: hunt-idle-bob 2.1s ease-in-out infinite; }
+    @keyframes hunt-idle-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3%); }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 /* ---- 模块级状态（单例关卡，同一时刻只会有一个 hunt 实例挂载） ---- */
 let apiRef = null;
 let level = null;
-let canvas = null;
-let ctx = null;
-let cellSize = 60;
+let gridEl = null;
 let seq = null;
 let seqUnsub = null;
-let ticker = null;
-let currentAnimation = null;
-let resizeHandler = null;
 let running = false;
 let destroyed = false;
 let logicalCol = 0, logicalRow = 0, logicalFacing = 0, grabbed = false;
-let robot = null;
+let angleDeg = 0; // 连续角度（不取模），保证转向动画走最短路径
+let roverPosEl = null, roverRotEl = null, roverSquashEl = null;
 
-function cellCenter(col, row) {
-  return { x: col * cellSize + cellSize / 2, y: row * cellSize + cellSize / 2 };
+function cellPercent(col, row) {
+  return { left: (col * 100) / GRID_SIZE, top: (row * 100) / GRID_SIZE };
+}
+
+function setRoverExpression(face) {
+  if (roverSquashEl) roverSquashEl.innerHTML = roverTop({ face });
+}
+
+function placeRoverInstant(col, row, angle) {
+  const { left, top } = cellPercent(col, row);
+  roverPosEl.style.transition = 'none';
+  roverRotEl.style.transition = 'none';
+  roverPosEl.style.left = `${left}%`;
+  roverPosEl.style.top = `${top}%`;
+  roverRotEl.style.transform = `rotate(${angle}deg)`;
+  // 强制 reflow 后恢复过渡，避免下一次动画瞬移
+  void roverPosEl.offsetWidth;
+  roverPosEl.style.transition = '';
+  roverRotEl.style.transition = '';
+}
+
+function moveRoverTo(col, row) {
+  const { left, top } = cellPercent(col, row);
+  roverPosEl.style.left = `${left}%`;
+  roverPosEl.style.top = `${top}%`;
+}
+
+function rotateRoverTo(deg) {
+  roverRotEl.style.transform = `rotate(${deg}deg)`;
+}
+
+function bumpRover() {
+  roverSquashEl.classList.remove('hunt-bump');
+  void roverSquashEl.offsetWidth;
+  roverSquashEl.classList.add('hunt-bump');
+  setTimeout(() => { if (roverSquashEl) roverSquashEl.classList.remove('hunt-bump'); }, BUMP_MS);
 }
 
 function resetLogicalState() {
   logicalCol = level.start.col;
   logicalRow = level.start.row;
   logicalFacing = level.facing;
+  angleDeg = logicalFacing * 90;
   grabbed = false;
-  const c = cellCenter(logicalCol, logicalRow);
-  robot = { x: c.x, y: c.y, angle: logicalFacing * (Math.PI / 2), squash: 1, expression: 'idle' };
 }
 
-function sizeCanvas(container) {
-  const wrap = container.querySelector('#hunt-canvas-wrap');
-  const availW = Math.min(Math.max(wrap.clientWidth || 320, 220), 420);
-  cellSize = (availW - CANVAS_PAD * 2) / GRID_SIZE;
-  ctx = setupHiDPICanvas(canvas, availW, availW);
+function cellKind(col, row) {
+  const key = `${col},${row}`;
+  if (level.obstacles.has(key)) return 'rock';
+  if (!grabbed && col === level.treasure.col && row === level.treasure.row) return 'gem';
+  if (col === level.start.col && row === level.start.row) return 'flag';
+  return 'grass';
 }
 
-function drawScene(bob) {
-  if (!ctx) return;
-  const size = GRID_SIZE * cellSize;
-  const full = size + CANVAS_PAD * 2;
-  ctx.clearRect(0, 0, full, full);
-  ctx.save();
-  ctx.translate(CANVAS_PAD, CANVAS_PAD);
-  ctx.fillStyle = '#EAF5EC';
-  ctx.fillRect(0, 0, size, size);
+function renderGrid() {
+  let html = '';
   for (let r = 0; r < GRID_SIZE; r++) {
     for (let c = 0; c < GRID_SIZE; c++) {
-      ctx.strokeStyle = 'rgba(35,39,46,.14)';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(c * cellSize + 1, r * cellSize + 1, cellSize - 2, cellSize - 2);
+      const kind = cellKind(c, r);
+      html += `<div class="hunt-cell" data-col="${c}" data-row="${r}">${tiles[kind]()}</div>`;
     }
   }
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  level.obstacles.forEach((key) => {
-    const [c, r] = key.split(',').map(Number);
-    const { x, y } = cellCenter(c, r);
-    ctx.font = `${Math.round(cellSize * 0.55)}px sans-serif`;
-    ctx.fillText('🪨', x, y + 2);
-  });
-  if (!grabbed) {
-    const { x, y } = cellCenter(level.treasure.col, level.treasure.row);
-    ctx.font = `${Math.round(cellSize * 0.6)}px sans-serif`;
-    ctx.fillText('💎', x, y + 2);
-  }
-  drawRover(ctx, {
-    x: robot.x, y: robot.y + bob, angle: robot.angle,
-    scale: cellSize / 34, squash: robot.squash, expression: robot.expression,
-  });
-  ctx.restore();
+  html += `
+    <div class="hunt-rover-pos" id="hunt-rover-pos">
+      <div class="hunt-rover-rot" id="hunt-rover-rot">${roverTop({ face: 'happy' })}</div>
+    </div>`;
+  gridEl.innerHTML = html;
+  roverPosEl = gridEl.querySelector('#hunt-rover-pos');
+  roverRotEl = gridEl.querySelector('#hunt-rover-rot');
+  // squash 层包一层，避免和旋转的 transform 打架
+  roverSquashEl = document.createElement('div');
+  roverSquashEl.className = 'hunt-rover-squash hunt-idle-bob';
+  while (roverRotEl.firstChild) roverSquashEl.appendChild(roverRotEl.firstChild);
+  roverRotEl.appendChild(roverSquashEl);
 }
 
-function animatePromise(opts) {
-  return new Promise((resolve) => {
-    currentAnimation = animate({ ...opts, onComplete: () => { currentAnimation = null; resolve(); } });
-  });
+/** 只重绘"是否已拾取宝藏"这一格（挖到宝藏后清掉 gem 贴图），避免整网格重绘打断动画层。 */
+function refreshTreasureCell() {
+  const cell = gridEl.querySelector(`.hunt-cell[data-col="${level.treasure.col}"][data-row="${level.treasure.row}"]`);
+  if (cell) cell.innerHTML = tiles[cellKind(level.treasure.col, level.treasure.row)]();
 }
 
-async function bumpAnimation() {
-  await animatePromise({
-    duration: 240, easing: Easing.easeOutCubic,
-    onUpdate: (t) => { robot.squash = 1 + Math.sin(t * Math.PI) * 0.22; },
-  });
-  robot.squash = 1;
-}
-
-async function resetRobotToStart() {
-  const fromX = robot.x, fromY = robot.y, fromAngle = robot.angle;
-  logicalCol = level.start.col; logicalRow = level.start.row; logicalFacing = level.facing;
-  const target = cellCenter(logicalCol, logicalRow);
-  const targetAngle = logicalFacing * (Math.PI / 2);
-  robot.expression = 'idle';
-  await animatePromise({
-    duration: 420, easing: Easing.easeInOutQuad,
-    onUpdate: (t) => {
-      robot.x = fromX + (target.x - fromX) * t;
-      robot.y = fromY + (target.y - fromY) * t;
-      robot.angle = fromAngle + (targetAngle - fromAngle) * t;
-    },
-  });
-  robot.angle = targetAngle;
-  robot.squash = 1;
-  grabbed = false;
-}
-
-/** 执行单条指令，返回 {ok, done} —— ok=false 表示失败已处理（已 fail+复位），done=true 表示抓到宝藏已结算。 */
 async function runInstruction(block, index) {
   if (destroyed) return { ok: false };
 
   if (block.type === 'left' || block.type === 'right') {
     const dir = block.type === 'left' ? -1 : 1;
-    const newFacing = (logicalFacing + dir + 4) % 4;
-    const fromAngle = robot.angle;
-    const toAngle = fromAngle + dir * (Math.PI / 2);
-    await animatePromise({
-      duration: TURN_DURATION, easing: Easing.easeOutBack,
-      onUpdate: (t) => { robot.angle = fromAngle + (toAngle - fromAngle) * t; },
-    });
-    if (destroyed) return { ok: false };
-    logicalFacing = newFacing;
-    robot.angle = newFacing * (Math.PI / 2);
+    logicalFacing = (logicalFacing + dir + 4) % 4;
+    angleDeg += dir * 90;
+    rotateRoverTo(angleDeg);
     apiRef.sfx.click();
+    await wait(TURN_MS);
     return { ok: true };
   }
 
@@ -208,25 +245,17 @@ async function runInstruction(block, index) {
     const outOfBounds = nc < 0 || nc >= GRID_SIZE || nr < 0 || nr >= GRID_SIZE;
     const hitObstacle = !outOfBounds && level.obstacles.has(`${nc},${nr}`);
     if (outOfBounds || hitObstacle) {
-      robot.expression = 'oops';
+      setRoverExpression('oops');
       apiRef.fail(outOfBounds ? 'out-of-bounds' : 'hit-obstacle');
-      await bumpAnimation();
+      bumpRover();
+      await wait(BUMP_MS);
       if (destroyed) return { ok: false };
       await resetRobotToStart();
       return { ok: false };
     }
-    const from = cellCenter(logicalCol, logicalRow);
-    const to = cellCenter(nc, nr);
-    await animatePromise({
-      duration: MOVE_DURATION,
-      onUpdate: (t) => {
-        robot.x = from.x + (to.x - from.x) * t;
-        robot.y = from.y + (to.y - from.y) * t;
-        robot.squash = 1 - Math.sin(t * Math.PI) * 0.12;
-      },
-    });
+    moveRoverTo(nc, nr);
+    await wait(MOVE_MS);
     if (destroyed) return { ok: false };
-    robot.squash = 1;
     logicalCol = nc; logicalRow = nr;
     return { ok: true };
   }
@@ -234,7 +263,8 @@ async function runInstruction(block, index) {
   if (block.type === 'grab') {
     if (logicalCol === level.treasure.col && logicalRow === level.treasure.row && !grabbed) {
       grabbed = true;
-      robot.expression = 'happy';
+      setRoverExpression('happy');
+      refreshTreasureCell();
       apiRef.sfx.success();
       apiRef.mascot.say('挖到宝藏啦！', 'cheer');
       const usedSteps = index + 1;
@@ -245,15 +275,30 @@ async function runInstruction(block, index) {
       apiRef.complete(stars);
       return { ok: true, done: true };
     }
-    robot.expression = 'oops';
+    setRoverExpression('oops');
     apiRef.fail('grab-empty-cell');
-    await bumpAnimation();
+    bumpRover();
+    await wait(BUMP_MS);
     if (destroyed) return { ok: false };
     await resetRobotToStart();
     return { ok: false };
   }
 
   return { ok: true };
+}
+
+async function resetRobotToStart() {
+  grabbed = false;
+  refreshTreasureCell();
+  logicalCol = level.start.col; logicalRow = level.start.row; logicalFacing = level.facing;
+  // 转回起始朝向：走"最短角度差"而不是硬拉回 0，避免视觉上转一大圈
+  const targetBase = logicalFacing * 90;
+  const diff = ((targetBase - angleDeg) % 360 + 540) % 360 - 180;
+  angleDeg += diff;
+  setRoverExpression('happy'); // roverTop 只有 happy/oops 两态，复位即恢复常态
+  moveRoverTo(logicalCol, logicalRow);
+  rotateRoverTo(angleDeg);
+  await wait(MOVE_MS);
 }
 
 async function runProgram(program, container) {
@@ -265,7 +310,7 @@ async function runProgram(program, container) {
     if (destroyed) return;
     if (result.done) { running = false; setControlsEnabled(container, true); return; }
     if (!result.ok) { running = false; setControlsEnabled(container, true); return; }
-    await wait(STEP_GAP);
+    await wait(STEP_GAP_MS);
   }
   // 指令跑完了但没抓到宝藏
   if (destroyed) return;
@@ -292,13 +337,13 @@ function setControlsEnabled(container, enabled) {
 function buildDOM(container) {
   container.innerHTML = `
     <div class="flex-col gap-4">
-      <div class="brick-card brick-card--cat-hunt">
-        <div class="flex-between flex-wrap gap-2" style="margin-bottom:8px;">
+      <div class="brick-card brick-card--cat-hunt hunt-stage-card">
+        <div class="flex-between flex-wrap gap-2" style="margin-bottom:4px;">
           <h2 class="title-md" style="margin:0;">🗺️ 网格寻宝</h2>
           <div class="text-muted title-sm" id="hunt-status">拖积木规划路线，带机器人找到宝藏！</div>
         </div>
-        <div class="flex-center" id="hunt-canvas-wrap" style="width:100%;">
-          <canvas id="hunt-canvas"></canvas>
+        <div class="hunt-grid-outer">
+          <div class="hunt-grid" id="hunt-grid"></div>
         </div>
       </div>
       <div class="brick-card brick-card--blue">
@@ -325,16 +370,17 @@ export default {
   icon: '🗺️',
 
   init(container, api) {
+    injectStylesOnce();
     destroyed = false;
     running = false;
-    currentAnimation = null;
     apiRef = api;
     level = generateLevel();
 
     buildDOM(container);
-    canvas = container.querySelector('#hunt-canvas');
-    sizeCanvas(container);
+    gridEl = container.querySelector('#hunt-grid');
     resetLogicalState();
+    renderGrid();
+    placeRoverInstant(logicalCol, logicalRow, angleDeg);
 
     const trayEl = container.querySelector('#hunt-tray');
     const seqEl = container.querySelector('#hunt-seq');
@@ -378,16 +424,7 @@ export default {
       seq.clear();
     });
 
-    resizeHandler = () => {
-      sizeCanvas(container);
-    };
-    window.addEventListener('resize', resizeHandler);
-
-    ticker = createTicker(() => {
-      const bob = running ? 0 : Math.sin(performance.now() / 500) * 1.2;
-      drawScene(bob);
-    });
-    ticker.start();
+    // 网格/机器人图层全部走百分比布局（CSS grid + %-based transform），随窗口自适应，无需 JS 重算尺寸。
 
     apiRef.mascot.say('拖积木、按 ▶ 带我去找宝藏吧！', 'idle');
   },
@@ -395,12 +432,9 @@ export default {
   destroy() {
     destroyed = true;
     running = false;
-    if (currentAnimation) { currentAnimation.cancel(); currentAnimation = null; }
-    if (ticker) { ticker.stop(); ticker = null; }
     if (seqUnsub) { seqUnsub(); seqUnsub = null; }
     if (seq) { seq.destroy(); seq = null; }
-    if (resizeHandler) { window.removeEventListener('resize', resizeHandler); resizeHandler = null; }
-    ctx = null;
-    canvas = null;
+    gridEl = null;
+    roverPosEl = null; roverRotEl = null; roverSquashEl = null;
   },
 };

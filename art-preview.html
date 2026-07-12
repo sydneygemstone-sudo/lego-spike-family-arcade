@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>art.js 资产预览</title>
+<style>
+  body { font-family: -apple-system, "PingFang SC", sans-serif; background: #FDF3DF; margin: 20px; }
+  .row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .card h4 { margin: 0 0 8px; font-size: 13px; color: #555; }
+  .card svg { display: block; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">
+import * as A from './assets/art.js';
+const root = document.getElementById('root');
+function add(title, html, w) {
+  const c = document.createElement('div');
+  c.className = 'card';
+  c.innerHTML = `<h4>${title}</h4><div style="width:${w}px">${html}</div>`;
+  root.appendChild(c);
+}
+const row = () => { const r = document.createElement('div'); r.className = 'row'; root.appendChild(r); };
+
+add('roverSide happy', A.roverSide(), 220);
+add('roverSide effort 轮转45°', A.roverSide({ wheelAngle: 45, face: 'effort' }), 220);
+add('roverSide oops', A.roverSide({ face: 'oops' }), 220);
+add('roverTop', A.roverTop(), 160);
+add('roverTop oops', A.roverTop({ face: 'oops' }), 160);
+add('clawTop 单位30° 臂60° 目标120°', A.clawTopScene({ unitDeg: 30, armDeg: 60, showTargetRay: 120 }), 560);
+add('clawTop 单位45° 臂0°', A.clawTopScene({ unitDeg: 45, armDeg: 0 }), 560);
+add('depthGauge 4圈 当前2 目标3', A.depthGauge({ totalTurns: 4, turns: 2, targetTurns: 3 }), 240);
+add('forceGauge 5N 安全3-5', A.forceGauge({ value: 5, min: 3, max: 5 }), 320);
+add('prize glass', A.prize('glass'), 90);
+add('prize egg', A.prize('egg'), 90);
+add('prize brick', A.prize('brick'), 90);
+add('prize plush', A.prize('plush'), 90);
+add('bridgeScene 6步', A.bridgeScene({ steps: 6 }), 760);
+add('beltScene 4包裹', A.beltScene({ n: 4 }), 720);
+add('trackScene', A.trackScene(), 800);
+add('tile grass', A.tiles.grass(), 90);
+add('tile rock', A.tiles.rock(), 90);
+add('tile gem', A.tiles.gem(), 90);
+add('tile flag', A.tiles.flag(), 90);
+add('dialFrame', A.dialFrame({ label: '前进圈数' }), 170);
+</script>
+</body>
+</html>

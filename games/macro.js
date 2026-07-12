@@ -1,11 +1,14 @@
 /* games/macro.js
  * 口诀大师 —— 先定义一个 My Block（3-5 个动作 + 命名），再用它（+基础积木）拼出一条
  * 含重复片段的长路径。两个 blocks-ui 序列区：定义区 + 主程序区（合同 §6 支持多序列区）。
- * 执行到 My Block 卡时播放"展开动画"。星级按是否用宏压缩了指令数。
+ * 场景美术全部来自 assets/art.js：底部执行步道用 trackScene（无瓷砖简化版）+ roverTop
+ * （俯视机器人，nested-svg 叠加 + CSS transform 补间走位/转向）。目标路径条本身是文字线索
+ * 卡片（非场景美术），用纯 Unicode 箭头（非 emoji）标注方向，重复片段同色描边框分组。
  * 协议见 API.md：export default {id,title,icon,init,destroy}。
  */
 
 import { createTray, createSequence } from '../js/blocks-ui.js';
+import * as Art from '../assets/art.js';
 
 const ACTIONS = ['fwd', 'left', 'right'];
 const ACTION_META = {
@@ -13,6 +16,8 @@ const ACTION_META = {
   left: { label: 'Turn Left', icon: '⬅️', color: 'green' },
   right: { label: 'Turn Right', icon: '➡️', color: 'orange' },
 };
+// 目标路径条用的方向符号——普通 Unicode 箭头，不是 emoji，场景/线索区都能安全使用。
+const TRAIL_ICON = { fwd: '↑', left: '←', right: '→' };
 const MACRO_NAME_PRESETS = [
   { name: '火箭步', icon: '🚀' },
   { name: '兔子跳', icon: '🐇' },
@@ -36,42 +41,61 @@ function buildLevelPlan() {
   const suffix = Array.from({ length: suffixLen }, () => pick(ACTIONS));
 
   const target = [];
-  prefix.forEach((t) => target.push({ type: t, icon: ACTION_META[t].icon, segment: 'prefix' }));
+  prefix.forEach((t) => target.push({ type: t, segment: 'prefix' }));
   for (let k = 0; k < repeatCount; k++) {
-    unit.forEach((t) => target.push({ type: t, icon: ACTION_META[t].icon, segment: `unit${k % 2}` }));
+    unit.forEach((t) => target.push({ type: t, segment: 'repeat', groupIndex: k }));
   }
-  suffix.forEach((t) => target.push({ type: t, icon: ACTION_META[t].icon, segment: 'suffix' }));
+  suffix.forEach((t) => target.push({ type: t, segment: 'suffix' }));
 
   const optimalCount = prefixLen + repeatCount + suffixLen;
   return { target, optimalCount };
 }
 
-/* --------------------------------------------------------------------------
- * 样式（只注入一次）
+/* -------------------------------------------------------------------------- 执行步道几何 --------------------------------------------------------------------------
+ * 复用 art.js 的 trackScene（tiles 全传 null 即为无瓷砖简化跑道）+ trackCellX 定位 +
+ * roverTop 俯视机器人。roverTop 默认朝北（north），跑道是水平方向，所以基准角要
+ * 加 90°（朝东）；每次 left/right 指令在基准角上叠加 ∓90° 做原地转向的补间演示。
  * -------------------------------------------------------------------------- */
+const TRACK_CELL_CENTER_Y = 60 + 110 / 2; // trackScene 内 ty=60, th=110
+const ROVER_BASE_DEG = 90;
+
+function buildStageMarkup(cellCount) {
+  const tiles = Array(cellCount).fill(null);
+  const base = Art.trackScene({ tiles });
+  const startX = Art.trackCellX(0);
+  const roverInner = Art.roverTop({ face: 'idle' })
+    .replace('<svg ', `<svg x="${(startX - 32).toFixed(1)}" y="${(TRACK_CELL_CENTER_Y - 35).toFixed(1)}" width="64" height="71" `);
+  const wrapped = `<g id="macro-rover-nest" style="transform-origin:${startX}px ${TRACK_CELL_CENTER_Y}px; transition: transform .4s ease;">${roverInner}</g>`;
+  return base.replace('</svg>', `${wrapped}</svg>`);
+}
+
+/* -------------------------------------------------------------------------- 样式（只注入一次） -------------------------------------------------------------------------- */
 let stylesInjected = false;
 function injectStylesOnce() {
   if (stylesInjected) return;
   stylesInjected = true;
   const style = document.createElement('style');
   style.textContent = `
-    .macro-section { margin-bottom: 16px; }
+    .macro-stage-card { padding-top:22px; }
+    .macro-stage { max-height:56vh; display:flex; background:var(--paper-50); border-radius:14px; overflow:hidden; }
+    .macro-stage svg { width:100%; height:auto; display:block; }
+    .macro-section { margin-top: 16px; }
     .macro-section--dim { opacity:.45; pointer-events:none; filter: grayscale(.4); }
     .macro-trail-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; padding: 6px 2px 10px; }
-    .macro-trail { display:flex; gap:6px; width:max-content; padding: 4px 2px; }
+    .macro-trail { display:flex; align-items:center; gap:6px; width:max-content; padding: 4px 2px; }
+    .macro-repeat-group {
+      display:flex; gap:4px; padding:5px; margin:0 3px; border-radius:12px;
+      border:3px solid var(--cat-macro,#E0218A); background: rgba(224,33,138,.08);
+    }
     .macro-trail-cell {
       position:relative; width:36px; height:36px; border-radius:10px;
-      display:flex; align-items:center; justify-content:center; font-size:18px;
-      background: var(--paper-100); border:2px solid var(--ink-300);
+      display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800;
+      background: var(--paper-100); border:2px solid var(--ink-300); color: var(--ink-900);
       transition: background .2s ease, transform .2s ease, border-color .2s ease;
     }
-    .macro-trail-cell[data-seg^="unit1"] { background: #FFE9BE; }
     .macro-trail-cell--active { transform: scale(1.18); border-color: var(--cat-macro,#E0218A); background:#FFD9EC; }
     .macro-trail-cell--done { border-color: var(--lego-green,#237841); background:#DFF3E5; }
     .macro-trail-cell--bad { border-color: var(--lego-red,#D01012); background:#FFE0E0; }
-    .macro-runner {
-      position:relative; margin-top:-2px; font-size:20px; text-align:left; transition: transform .22s ease;
-    }
     .macro-name-picker { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
     .macro-name-btn {
       display:flex; flex-direction:column; align-items:center; gap:2px; min-width:76px;
@@ -106,17 +130,25 @@ function render(container, api) {
   let cancelled = false;
   const timers = [];
   const plan = buildLevelPlan();
+  const stageCellCount = plan.target.length + 1;
   let macroDef = null; // {name, icon, actions:[type,...]}
   let defineTray = null;
   let defineSeq = null;
   let mainTray = null;
   let mainSeq = null;
   let running = false;
+  let stageIndex = 0;
+  let stageTurnDeg = 0;
 
   container.innerHTML = `
     <div class="brick-card brick-card--cat-macro macro-section">
-      <p class="title-sm" style="margin:0 0 8px;">🗺️ 目标路径（看看有没有重复的图案？）</p>
+      <p class="title-sm" style="margin:0 0 8px;">🔍 找一找重复的一组！</p>
       <div class="macro-trail-wrap"><div class="macro-trail" id="macro-target-trail"></div></div>
+    </div>
+
+    <div class="brick-card brick-card--cat-macro macro-stage-card">
+      <p class="title-sm" style="margin:0 0 8px;">🤖 运行时看机器人怎么按你的程序走位！</p>
+      <div class="macro-stage" id="macro-stage-box"></div>
     </div>
 
     <div class="brick-card brick-card--pink macro-section" id="macro-define-card">
@@ -140,6 +172,7 @@ function render(container, api) {
     </div>
   `;
 
+  const stageBox = container.querySelector('#macro-stage-box');
   const targetTrailEl = container.querySelector('#macro-target-trail');
   const defineCard = container.querySelector('#macro-define-card');
   const confirmBtn = container.querySelector('#macro-confirm-btn');
@@ -150,11 +183,51 @@ function render(container, api) {
   const runBtn = container.querySelector('#macro-run-btn');
   const clearBtn = container.querySelector('#macro-clear-btn');
 
-  // ---- 目标路径展示 ----
+  // ---- 执行步道（场景）----
+  stageBox.innerHTML = buildStageMarkup(stageCellCount);
+  const roverNestEl = stageBox.querySelector('#macro-rover-nest');
+  function resetStage() {
+    stageIndex = 0;
+    stageTurnDeg = 0;
+    roverNestEl.style.transition = 'none';
+    roverNestEl.style.transform = `rotate(${ROVER_BASE_DEG}deg)`;
+    // 强制回流后恢复过渡，避免下一次真正移动时也被 transition:none 吃掉
+    void roverNestEl.getBoundingClientRect();
+    roverNestEl.style.transition = 'transform .4s ease';
+  }
+  function advanceStage(actionType) {
+    stageIndex += 1;
+    if (actionType === 'left') stageTurnDeg -= 90;
+    else if (actionType === 'right') stageTurnDeg += 90;
+    const dx = Art.trackCellX(stageIndex) - Art.trackCellX(0);
+    roverNestEl.style.transform = `translate(${dx}px, 0) rotate(${ROVER_BASE_DEG + stageTurnDeg}deg)`;
+  }
+  resetStage();
+
+  // ---- 目标路径展示（重复片段同色描边框分组）----
+  function cellHTML(item, idx) {
+    return `<div class="macro-trail-cell" data-i="${idx}">${TRAIL_ICON[item.type]}</div>`;
+  }
   function renderTargetTrail() {
-    targetTrailEl.innerHTML = plan.target.map((t, i) => `
-      <div class="macro-trail-cell" data-seg="${t.segment}" data-i="${i}">${t.icon}</div>
-    `).join('');
+    const html = [];
+    let i = 0;
+    while (i < plan.target.length) {
+      const item = plan.target[i];
+      if (item.segment === 'repeat') {
+        const gIdx = item.groupIndex;
+        const startI = i;
+        const groupCells = [];
+        while (i < plan.target.length && plan.target[i].segment === 'repeat' && plan.target[i].groupIndex === gIdx) {
+          groupCells.push(plan.target[i]);
+          i += 1;
+        }
+        html.push(`<div class="macro-repeat-group">${groupCells.map((c, ci) => cellHTML(c, startI + ci)).join('')}</div>`);
+      } else {
+        html.push(cellHTML(item, i));
+        i += 1;
+      }
+    }
+    targetTrailEl.innerHTML = html.join('');
   }
   renderTargetTrail();
 
@@ -167,8 +240,7 @@ function render(container, api) {
 
   // 测试专用只读钩子（同 games/hunt.js 的约定）：仅在 window.__LSFA_TEST__ 显式为 true 时挂载，
   // 生产环境不受影响。暴露目标路径 plan 与两个序列区 handle，供自动化脚本跳过真实拖拽直接
-  // 调用 addBlock/setSequence 驱动关卡（拖拽手势本身走 blocks-ui.js 的 Pointer Events，已在
-  // 单独测试中验证过；这里只是让"跑完整关"这一步不必逐块重新模拟拖拽手势）。
+  // 调用 addBlock/setSequence 驱动关卡。
   if (typeof window !== 'undefined' && window.__LSFA_TEST__) {
     window.__lsfaMacro = { plan, defineSeq };
   }
@@ -227,6 +299,7 @@ function render(container, api) {
     container.querySelector('#macro-main-seq').innerHTML = '';
     runBtn.disabled = true;
     expandStage.style.display = 'none';
+    resetStage();
 
     container.querySelector('#macro-define-tray').style.display = '';
     container.querySelector('#macro-define-seq').style.display = '';
@@ -296,17 +369,19 @@ function render(container, api) {
     running = true;
     runBtn.disabled = true;
     container.querySelector('#macro-main-tray').classList.add('macro-locked');
+    resetStage();
     api.mascot.say('运行中……', 'think', 1400);
 
     const cells = Array.from(targetTrailEl.querySelectorAll('.macro-trail-cell'));
     let trailIndex = 0;
 
-    async function highlightOne() {
+    async function highlightOne(actionType) {
       const cell = cells[trailIndex];
       if (cell) {
         cell.classList.add('macro-trail-cell--active');
         api.sfx.click();
       }
+      advanceStage(actionType);
       await wait(230, timers);
       if (cancelled) return;
       if (cell) {
@@ -329,7 +404,7 @@ function render(container, api) {
         for (let i = 0; i < macroDef.actions.length; i++) {
           if (cancelled) return;
           expIcons[i].classList.add('exp-icon--lit');
-          await highlightOne();
+          await highlightOne(macroDef.actions[i]);
           if (cancelled) return;
         }
         await wait(260, timers);
@@ -337,7 +412,7 @@ function render(container, api) {
         expandStage.style.display = 'none';
         if (tile) tile.classList.remove('brick-block--flip');
       } else {
-        await highlightOne();
+        await highlightOne(item.type);
         if (cancelled) return;
       }
     }
@@ -359,11 +434,12 @@ function render(container, api) {
     if (running) return;
     api.sfx.click();
     if (mainSeq) mainSeq.clear();
+    resetStage();
     const cells = Array.from(targetTrailEl.querySelectorAll('.macro-trail-cell'));
     cells.forEach((c) => c.classList.remove('macro-trail-cell--done', 'macro-trail-cell--active', 'macro-trail-cell--bad'));
   });
 
-  api.mascot.say('先看看目标路径有没有重复的图案，再定义 My Block 吧！', 'idle', 4500);
+  api.mascot.say('先看看目标路径有没有重复的一组，再定义 My Block 吧！', 'idle', 4500);
 
   return {
     destroy() {

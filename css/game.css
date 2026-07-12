@@ -41,6 +41,11 @@
   padding: var(--space-4);
   display: flex;
   flex-direction: column;
+  /* 场景容器改自适应高度后，内容变矮的关卡（如 race）在纵向宽高比视口（768x1024）会在
+   * 底部空出一大截。用 safe center 把内容整体居中分摊留白（顶部/底部各一点，不再是
+   * 一坨死白）；"safe" 保底——一旦内容比视口还高就自动退回 flex-start 顶对齐，不会把
+   * 头部标题推出视口外，不支持 safe 关键字的旧浏览器也会整条声明失效、退回默认顶对齐。 */
+  justify-content: safe center;
 }
 
 @media (max-width: 700px) {
