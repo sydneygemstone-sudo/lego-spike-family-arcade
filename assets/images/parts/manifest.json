@@ -1,0 +1,265 @@
+[
+  {
+    "card": "Technic Beam",
+    "file": "images/parts/te_1_technic_beam.png",
+    "partNum": "32278",
+    "partName": "Technic, Liftarm Thick 1 x 15",
+    "color": "Black",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/11/32278.png",
+    "status": "ok"
+  },
+  {
+    "card": "Technic Frame",
+    "file": "images/parts/te_2_technic_frame.png",
+    "partNum": "64179",
+    "partName": "Technic, Liftarm, Modified Frame Thick 5 x 7 Open Center",
+    "color": "Black",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/11/64179.png",
+    "status": "ok"
+  },
+  {
+    "card": "Technic Axle",
+    "file": "images/parts/te_3_technic_axle.png",
+    "partNum": "32073",
+    "partName": "Technic, Axle 5L",
+    "color": "Light Bluish Gray",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/86/32073.png",
+    "status": "ok",
+    "note": "45678 内含多种长度十字轴（3L/4L/5L/7L/8L/9L/11L），取 5L 作代表图"
+  },
+  {
+    "card": "Technic Pin",
+    "file": "images/parts/te_4_technic_pin.png",
+    "partNum": "2780",
+    "partName": "Technic, Pin with Short Friction Ridges",
+    "color": "Black",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/11/2780.png",
+    "status": "ok"
+  },
+  {
+    "card": "Wheel & Rubber Tire",
+    "file": "images/parts/te_5_wheel_tire.png",
+    "partNum": "39367pb01",
+    "partName": "Wheel 56 x 14 Technic with Axle Hole and 8 Pin Holes with Molded Medium Azure Hard Rubber Tire Pattern",
+    "color": "Black (wheel) / Medium Azure (tire)",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/11/39367pb01.png",
+    "status": "ok"
+  },
+  {
+    "card": "Spur Gear",
+    "file": "images/parts/te_6_spur_gear.png",
+    "partNum": "32269",
+    "partName": "Technic, Gear 20 Tooth Double Bevel",
+    "color": "Tan",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/2/32269.png",
+    "status": "ok"
+  },
+  {
+    "card": "Bevel Gear",
+    "file": "images/parts/te_7_bevel_gear.png",
+    "partNum": "32270",
+    "partName": "Technic, Gear 12 Tooth Double Bevel",
+    "color": "Black",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/11/32270.png",
+    "status": "ok",
+    "note": "45678 内齿轮都是 Double Bevel 造型；12齿常用于 90 度传动，作为锥齿轮代表最贴切"
+  },
+  {
+    "card": "Rack Gear",
+    "file": "images/parts/te_8_rack_gear.png",
+    "partNum": "64781",
+    "partName": "Technic, Gear Rack 1 x 13 with Axle and Pin Holes",
+    "color": "Black",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/11/64781.png",
+    "status": "ok"
+  },
+  {
+    "card": "Worm Gear",
+    "file": "images/parts/te_9_worm_gear.png",
+    "partNum": "4716",
+    "partName": "Technic, Gear Worm Screw, Long",
+    "color": "Light Bluish Gray",
+    "inSet45678": false,
+    "source": "https://img.bricklink.com/ItemImage/PN/86/4716.png",
+    "status": "replaced",
+    "note": "45678 套装内实际不含蜗杆，用通用 LEGO Technic 蜗杆 4716 作教学参考图"
+  },
+  {
+    "card": "Bushing",
+    "file": "images/parts/te_10_bushing.png",
+    "partNum": "3713",
+    "partName": "Technic Bush",
+    "color": "Light Bluish Gray",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/86/3713.png",
+    "status": "ok"
+  },
+  {
+    "card": "Technic Plate",
+    "file": "images/parts/te_11_technic_plate.png",
+    "partNum": "3738",
+    "partName": "Technic, Plate 2 x 8 with 7 Holes",
+    "color": "Black",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/11/3738.png",
+    "status": "ok"
+  },
+  {
+    "card": "Steel Castor Wheel",
+    "file": "images/parts/te_12_steel_castor.png",
+    "partNum": "52629",
+    "partName": "Wheel Ball, Hard Plastic 19mm D.",
+    "color": "White",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/1/52629.png",
+    "status": "ok"
+  },
+  {
+    "card": "Axle Connector",
+    "file": "images/parts/te_13_axle_connector.png",
+    "partNum": "6538c",
+    "partName": "Technic, Axle Connector 2L (Smooth with x Hole + Orientation)",
+    "color": "White",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/1/6538c.png",
+    "status": "ok"
+  },
+  {
+    "card": "Technic Cross Block",
+    "file": "images/parts/te_14_cross_block.png",
+    "partNum": "48989",
+    "partName": "Technic, Pin Connector Perpendicular 3L with 4 Pins",
+    "color": "Light Bluish Gray",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/86/48989.png",
+    "status": "ok"
+  },
+  {
+    "card": "Belt & Pulley",
+    "file": "images/parts/te_15_belt_pulley.png",
+    "partNum": "4185",
+    "partName": "Technic Wedge Belt Wheel (Pulley)",
+    "color": "Black",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/11/4185.png",
+    "status": "ok",
+    "note": "组合件 4185c01（已装轮胎，见 2815 黑胎）的官方图仅 80x60px 偏小，改用同一皮带轮单体图（192x192px）更清晰；套装另含黄色大皮带 x90（Rubber Belt Extra Large）未单独出图"
+  },
+  {
+    "card": "Turntable",
+    "file": "images/parts/te_16_turntable.png",
+    "partNum": "2856c01",
+    "partName": "Technic Turntable 56 Tooth Extended Arms Complete Assembly",
+    "color": "Black",
+    "inSet45678": false,
+    "source": "https://img.bricklink.com/ItemImage/PN/11/2856c01.png",
+    "status": "replaced",
+    "note": "45678 套装内不含回转盘，用通用 LEGO Technic 回转转盘 2856c01 作教学参考图"
+  },
+  {
+    "card": "Technic Lever",
+    "file": "images/parts/te_17_technic_lever.png",
+    "partNum": "32523",
+    "partName": "Technic, Liftarm Thick 1 x 3",
+    "color": "Yellow",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/3/32523.png",
+    "status": "ok"
+  },
+  {
+    "card": "Universal Joint",
+    "file": "images/parts/te_18_universal_joint.png",
+    "partNum": "62520c01",
+    "partName": "Technic, Universal Joint 3L (Complete Assembly)",
+    "color": "Light Bluish Gray",
+    "inSet45678": false,
+    "source": "https://img.bricklink.com/ItemImage/PN/86/62520c01.png",
+    "status": "replaced",
+    "note": "45678 套装内不含万向节；官方设计编号 61903，BrickLink 目录号为 62520c01，用其作教学参考图"
+  },
+  {
+    "card": "Clutch Gear",
+    "file": "images/parts/te_19_clutch_gear.png",
+    "partNum": "60c01",
+    "partName": "Technic, Gear 24 Tooth Clutch",
+    "color": "White",
+    "inSet45678": false,
+    "source": "https://img.bricklink.com/ItemImage/PN/1/60c01.png",
+    "status": "replaced",
+    "note": "45678 套装内不含滑摩离合齿轮，用通用白色 24 齿离合齿轮 60c01（新版设计号 76244）作教学参考图"
+  },
+  {
+    "card": "Large Motor (Hardware)",
+    "file": "images/parts/hw_1_large_motor.png",
+    "partNum": "45602 / 54675c01",
+    "partName": "Electric, Motor SPIKE Prime / Powered Up, Large Angular with White Top Housing and Cable",
+    "color": "Medium Azure",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/156/54675c01.png",
+    "status": "replaced",
+    "note": "原 large_motor.jpg/png 与 medium_motor 是同一张图（复制粘贴错误），已替换为干净的官方产品图"
+  },
+  {
+    "card": "Medium Motor (Hardware)",
+    "file": "images/parts/hw_2_medium_motor.png",
+    "partNum": "45603 / 54696c01",
+    "partName": "Electric, Motor SPIKE Prime / Powered Up, Medium Angular with White Top Housing and Cable",
+    "color": "Medium Azure",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/156/54696c01.png",
+    "status": "replaced",
+    "note": "原图顶部被裁切且与 large_motor 重复，已替换为干净的官方产品图（明显小于 large motor）"
+  },
+  {
+    "card": "Color Sensor (Hardware)",
+    "file": "images/parts/hw_3_color_sensor.png",
+    "partNum": "45605 / 37308c01",
+    "partName": "Electric Sensor, Color - SPIKE Prime",
+    "color": "Black",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/11/37308c01.png",
+    "status": "replaced",
+    "note": "原图底部被裁切、叠有黄色残片和中文标签文字，已替换为干净白底官方产品图"
+  },
+  {
+    "card": "Distance Sensor (Hardware)",
+    "file": "images/parts/hw_4_distance_sensor.png",
+    "partNum": "45604 / 37316c01",
+    "partName": "Electric Sensor, Distance - SPIKE Prime",
+    "color": "Black",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/11/37316c01.png",
+    "status": "replaced",
+    "note": "原图叠有 \"4 距离传感器\" 中文标签文字，已替换为干净官方产品图"
+  },
+  {
+    "card": "Force Sensor (Hardware)",
+    "file": "images/parts/hw_5_force_sensor.png",
+    "partNum": "45606 / 37312c01",
+    "partName": "Electric Sensor, Force - SPIKE Prime",
+    "color": "Black",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/11/37312c01.png",
+    "status": "replaced",
+    "note": "原图叠有 \"5 力传感器\" 中文标签文字，已替换为干净官方产品图"
+  },
+  {
+    "card": "Smart Hub (Hardware)",
+    "file": "images/parts/hw_6_smart_hub.png",
+    "partNum": "45601 / 53444c01",
+    "partName": "Electric, Hub Large - SPIKE Prime",
+    "color": "Yellow",
+    "inSet45678": true,
+    "source": "https://img.bricklink.com/ItemImage/PN/3/53444c01.png",
+    "status": "replaced",
+    "note": "原图顶部叠有中文残缺文字，已替换为干净官方产品图"
+  }
+]

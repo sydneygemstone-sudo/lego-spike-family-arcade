@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>LEGO SPIKE Family Arcade</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%B1%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/design-system.css">
+<link rel="stylesheet" href="css/index.css">
+</head>
+<body>
+<div class="page-shell">
+
+  <header class="home-header">
+    <div id="mascot-slot"></div>
+    <div>
+      <h1 class="title-hero">LEGO SPIKE 大冒险</h1>
+      <p class="text-muted" style="margin:0;">拖积木、闯关卡，集星星拿徽章！</p>
+    </div>
+  </header>
+
+  <section class="brick-card brick-card--yellow home-progress">
+    <div class="flex-between">
+      <span class="title-sm">总进度</span>
+      <span class="title-sm" id="progress-label">0 / 18 ★</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </section>
+
+  <section class="home-levels-grid" id="levels-grid"></section>
+
+  <section class="home-flashcard-entry">
+    <a href="flashcards.html" class="brick-card brick-card--purple brick-card--interactive tap-target flashcard-entry-card">
+      <span class="fc-icon">🗂️</span>
+      <span>
+        <span class="title-md" style="display:block;">闪卡 &amp; 小测验</span>
+        <span class="text-muted" style="font-size: var(--font-small);">复习积木知识，挑战满分拿"闪卡大师"徽章</span>
+      </span>
+    </a>
+  </section>
+
+  <section class="home-badges">
+    <h2 class="title-lg">徽章墙</h2>
+    <div class="badges-row" id="badges-row"></div>
+  </section>
+
+  <footer class="home-footer">
+    <a href="parents.html" class="parents-link">家长角落</a>
+  </footer>
+
+</div>
+
+<script type="module">
+import { createMascot } from './js/mascot.js';
+import { store, GAME_IDS } from './js/store.js';
+
+const LEVELS = [
+  { id: 'hunt',   title: '网格寻宝', icon: '🗺️', cat: 'hunt' },
+  { id: 'claw',   title: '抓娃娃机', icon: '🕹️', cat: 'claw' },
+  { id: 'macro',  title: '口诀大师', icon: '📜', cat: 'macro' },
+  { id: 'race',   title: '避障接力', icon: '🏁', cat: 'race' },
+  { id: 'sort',   title: '仓库分拣', icon: '📦', cat: 'sort' },
+  { id: 'bridge', title: '精准渡桥', icon: '🌉', cat: 'bridge' },
+];
+
+const BADGES = [
+  ...LEVELS.map((l) => ({ id: l.id, icon: l.icon, label: l.title, cat: l.cat })),
+  { id: 'quiz', icon: '🗂️', label: '闪卡大师', cat: 'macro' },
+];
+
+function starsMarkup(n) {
+  let s = '<div class="star-rating">';
+  for (let i = 1; i <= 3; i++) {
+    s += `<span class="star${i <= n ? ' star--filled' : ''}">★</span>`;
+  }
+  return s + '</div>';
+}
+
+function renderLevels() {
+  const grid = document.getElementById('levels-grid');
+  grid.innerHTML = LEVELS.map((lvl) => {
+    const stars = store.getStars(lvl.id);
+    return `
+      <a href="game.html?g=${lvl.id}" class="brick-card brick-card--interactive brick-card--cat-${lvl.cat} level-card tap-target" data-level="${lvl.id}">
+        <div class="level-card-icon">${lvl.icon}</div>
+        <div class="title-md">${lvl.title}</div>
+        ${starsMarkup(stars)}
+      </a>
+    `;
+  }).join('');
+}
+
+function renderBadges() {
+  const row = document.getElementById('badges-row');
+  const unlocked = store.getBadges();
+  row.innerHTML = BADGES.map((b) => {
+    const isUnlocked = unlocked.includes(b.id);
+    return `
+      <div class="badge-item">
+        <div class="badge-hex${isUnlocked ? '' : ' badge-hex--locked'}" style="--badge-color: var(--cat-${b.cat});">
+          ${isUnlocked ? b.icon : '❔'}
+        </div>
+        <div class="badge-item-label">${b.label}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderProgress() {
+  const total = store.totalStars();
+  const max = store.maxStars();
+  document.getElementById('progress-label').textContent = `${total} / ${max} ★`;
+  document.getElementById('progress-fill').style.width = `${max ? (total / max) * 100 : 0}%`;
+}
+
+function greetingLine(total, max) {
+  if (total === 0) return '你好！我是 Spike，一起来闯关拿星星吧！';
+  if (total >= max) return '全部满星！你是真正的编程大师！';
+  return `欢迎回来！你已经拿到 ${total} 颗星啦，继续加油！`;
+}
+
+renderLevels();
+renderBadges();
+renderProgress();
+
+const mascot = createMascot(document.getElementById('mascot-slot'), { emotion: 'happy' });
+// 延迟 1 秒再打招呼：让标题/副标题先露出来，也给气泡弹出一个更自然的欢迎节奏
+// （气泡本身的遮挡问题已经在 css/index.css 里通过 .home-header 改 flex-start 解掉，
+// 这里的延迟纯粹是体验上的锦上添花，不是覆盖问题的主要修复手段）。
+setTimeout(() => {
+  mascot.say(greetingLine(store.totalStars(), store.maxStars()), 'happy', 0);
+}, 900);
+</script>
+</body>
+</html>

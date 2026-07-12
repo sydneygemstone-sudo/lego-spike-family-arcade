@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>闪卡 &amp; 小测验 · LEGO SPIKE Family Arcade</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%B1%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/design-system.css">
+<link rel="stylesheet" href="css/flashcards.css">
+</head>
+<body>
+<div class="page-shell">
+
+  <header class="fc-header">
+    <div id="fc-mascot-slot"></div>
+    <div style="flex:1;">
+      <h1 class="title-xl" style="margin-bottom:2px;">闪卡 &amp; 小测验</h1>
+      <p class="text-muted" style="margin:0;">翻一翻卡片认识积木，挑战小测验拿"闪卡大师"徽章</p>
+    </div>
+    <a href="index.html" class="brick-btn brick-btn--gray brick-btn--sm">← 首页</a>
+  </header>
+
+  <div class="fc-tabs">
+    <button class="fc-tab-btn fc-tab-btn--active" data-tab="browse">浏览闪卡</button>
+    <button class="fc-tab-btn" data-tab="quiz">小测验</button>
+  </div>
+
+  <section class="fc-panel fc-panel--active" id="panel-browse">
+    <div class="fc-filters" id="fc-filters"></div>
+    <div class="fc-grid" id="fc-grid"></div>
+  </section>
+
+  <section class="fc-panel" id="panel-quiz">
+    <div id="quiz-container"></div>
+  </section>
+
+</div>
+
+<!-- 经典脚本（非 module），设置 window.scratchblocks / window.blockScripts / window.conceptDiagramsV2
+     全局对象；必须排在下面的 module 脚本之前完成执行（module 脚本默认 defer 语义，
+     会在整份文档解析完之后才执行，因此这里的经典脚本一定先跑完）。 -->
+<script src="assets/vendor/scratchblocks.min.js"></script>
+<script src="assets/blocks.js"></script>
+<script src="assets/concept-diagrams-v2.js"></script>
+
+<script type="module">
+import { CARDS_DATA } from './assets/cards-data.js';
+import { renderCardVisual, renderBlockScripts, CATEGORY_LABELS, escapeHtml } from './assets/card-visual.js';
+import { createMascot } from './js/mascot.js';
+import { mountQuiz } from './js/quiz.js';
+
+const filters = ['all', ...Object.keys(CATEGORY_LABELS)];
+let activeCategory = 'all';
+
+function renderFilters() {
+  const el = document.getElementById('fc-filters');
+  el.innerHTML = filters.map((f) => `
+    <button class="fc-chip${f === activeCategory ? ' fc-chip--active' : ''}" data-cat="${f}">
+      ${f === 'all' ? '全部' : CATEGORY_LABELS[f]}
+    </button>
+  `).join('');
+  el.querySelectorAll('.fc-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      activeCategory = btn.dataset.cat;
+      renderFilters();
+      renderGrid();
+    });
+  });
+}
+
+function renderGrid() {
+  const grid = document.getElementById('fc-grid');
+  const list = activeCategory === 'all' ? CARDS_DATA : CARDS_DATA.filter((c) => c.category === activeCategory);
+  grid.innerHTML = list.map((card) => `
+    <div class="flip-card" data-id="${card.id}">
+      <div class="flip-card-inner">
+        <div class="flip-card-face flip-card-front">
+          <span class="fc-card-cat-tag">${CATEGORY_LABELS[card.category] || card.category}</span>
+          <div class="fc-visual-box">${renderCardVisual(card)}</div>
+          <div class="fc-card-title-en">${escapeHtml(card.title)}</div>
+        </div>
+        <div class="flip-card-face flip-card-back">
+          <div class="fc-card-chinese">${escapeHtml(card.chinese)}</div>
+          <div class="fc-card-details">${escapeHtml(card.details || '')}</div>
+          ${card.action ? `<div class="fc-card-action"><span class="fc-card-action-label">亲子体感动作：</span>${escapeHtml(card.action)}</div>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  renderBlockScripts('#fc-grid', 1);
+
+  grid.querySelectorAll('.flip-card').forEach((el) => {
+    el.addEventListener('click', () => el.classList.toggle('is-flipped'));
+  });
+}
+
+function initTabs() {
+  const tabBtns = document.querySelectorAll('.fc-tab-btn');
+  tabBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach((b) => b.classList.remove('fc-tab-btn--active'));
+      btn.classList.add('fc-tab-btn--active');
+      document.querySelectorAll('.fc-panel').forEach((p) => p.classList.remove('fc-panel--active'));
+      const panel = document.getElementById(`panel-${btn.dataset.tab}`);
+      panel.classList.add('fc-panel--active');
+    });
+  });
+}
+
+renderFilters();
+renderGrid();
+initTabs();
+
+const mascot = createMascot(document.getElementById('fc-mascot-slot'));
+mascot.say('翻一翻卡片，认识每一块积木吧！', 'happy', 0);
+
+const quiz = mountQuiz(document.getElementById('quiz-container'));
+quiz.onExit(() => {
+  document.querySelector('.fc-tab-btn[data-tab="browse"]').click();
+});
+</script>
+</body>
+</html>

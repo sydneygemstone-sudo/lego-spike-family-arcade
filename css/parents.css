@@ -1,0 +1,63 @@
+/* css/parents.css — 家长角落页面级样式 */
+
+.parents-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.parents-intro {
+  margin-bottom: var(--space-5);
+  line-height: 1.7;
+}
+
+.research-article {
+  background: var(--paper-0);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-5);
+  margin-bottom: var(--space-5);
+  line-height: 1.75;
+}
+.research-article h1 {
+  font-size: var(--font-h2);
+  margin-bottom: var(--space-4);
+}
+.research-article h2 {
+  font-size: var(--font-h3);
+  color: var(--lego-blue-dark);
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-2);
+  border-bottom: 3px solid var(--paper-200);
+  padding-bottom: 6px;
+}
+.research-article p { margin: 0 0 var(--space-3); }
+.research-article ul { margin: 0 0 var(--space-3); padding-left: 1.4em; }
+.research-article li { margin-bottom: 6px; }
+.research-article hr {
+  border: none;
+  border-top: 2px dashed var(--paper-200);
+  margin: var(--space-5) 0;
+}
+.research-article table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--space-3) 0 var(--space-4);
+  font-size: var(--font-small);
+}
+.research-article th, .research-article td {
+  border: 1px solid var(--paper-200);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.research-article th {
+  background: var(--paper-100);
+  font-weight: 800;
+}
+
+.printable-note {
+  text-align: center;
+  color: var(--ink-700);
+}

@@ -1,0 +1,229 @@
+/* js/shell.js
+ * 通用关卡容器——game.html 唯一的入口脚本。
+ * 读取 ?g=<id>，动态 import('./games/<id>.js')，注入 api{complete,fail,sfx,mascot,store}，
+ * 统一负责：顶部栏（返回/吉祥物/标题/当前星级）、结算弹窗（3 星动画+音效）、重试/返回首页。
+ *
+ * 关卡模块协议（games/<id>.js）——支持两种导出形式，任选其一：
+ *   export default { id, title, icon, init(container, api), destroy() }
+ *   或直接具名导出同名字段（export const id/title/icon; export function init/destroy）
+ */
+
+import { sfx } from './sfx.js';
+import { createMascot } from './mascot.js';
+import { store } from './store.js';
+
+const FAIL_LINES = [
+  '没关系，再试一次！',
+  '哎呀，差一点点～',
+  '咱们再想想办法！',
+  'Debug 一下，马上就好！',
+];
+
+const COMPLETE_LINES = {
+  3: ['完美通关！你是最棒的小小工程师！', '满星！简直是编程小天才！'],
+  2: ['很不错！再挑战一次说不定能拿满星～', '不错哦！还差一点点就满星啦！'],
+  1: ['完成啦！再试试能不能做得更好！', '过关了！再来一次挑战更高分！'],
+  0: ['勇敢的尝试！再来一次一定可以！', '别灰心，再试一次就会啦！'],
+};
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function qs(sel, root = document) { return root.querySelector(sel); }
+
+function buildSkeleton(root) {
+  root.innerHTML = `
+    <div class="game-page">
+      <header class="game-topbar">
+        <button id="btn-home" class="brick-btn brick-btn--gray brick-btn--sm" aria-label="返回首页">← 首页</button>
+        <div class="game-topbar-mascot" id="mascot-slot"></div>
+        <div class="game-topbar-title">
+          <h1 id="game-title" class="title-md" style="margin:0;">加载中…</h1>
+          <div class="star-rating star-rating--sm" id="current-stars"></div>
+        </div>
+      </header>
+      <main id="game-root" class="game-root"></main>
+    </div>
+    <div id="modal-root"></div>
+  `;
+}
+
+function renderStars(container, count, size = 'normal') {
+  container.innerHTML = '';
+  for (let i = 1; i <= 3; i++) {
+    const s = document.createElement('span');
+    s.className = 'star' + (size === 'sm' ? ' star--sm' : '');
+    s.dataset.i = String(i);
+    s.textContent = '★';
+    if (i <= count) s.classList.add('star--filled');
+    container.appendChild(s);
+  }
+}
+
+async function loadGameModule(gameId) {
+  const mod = await import(`../games/${gameId}.js`);
+  const candidate = mod.default && typeof mod.default.init === 'function' ? mod.default : mod;
+  if (typeof candidate.init !== 'function') {
+    throw new Error('关卡模块未导出 init(container, api)');
+  }
+  return candidate;
+}
+
+function showErrorState(root, message) {
+  buildSkeleton(root);
+  const mascotSlot = qs('#mascot-slot', root);
+  const mascot = createMascot(mascotSlot);
+  mascot.say(message, 'oops', 0);
+  qs('#game-title', root).textContent = '出错了';
+  qs('#game-root', root).innerHTML = `
+    <div class="flex-center" style="min-height:40vh;">
+      <button class="brick-btn brick-btn--yellow" id="btn-home-err">返回首页</button>
+    </div>
+  `;
+  qs('#btn-home-err', root).addEventListener('click', () => { window.location.href = 'index.html'; });
+  qs('#btn-home', root).addEventListener('click', () => { window.location.href = 'index.html'; });
+}
+
+export async function startShell(root = document.getElementById('app')) {
+  buildSkeleton(root);
+
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get('g') || '';
+  const gameId = /^[a-zA-Z0-9_]+$/.test(raw) ? raw : null;
+
+  const mascotSlot = qs('#mascot-slot', root);
+  const mascot = createMascot(mascotSlot, { emotion: 'idle' });
+
+  qs('#btn-home', root).addEventListener('click', () => {
+    if (currentGame && typeof currentGame.destroy === 'function') {
+      try { currentGame.destroy(); } catch (e) { /* noop */ }
+    }
+    window.location.href = 'index.html';
+  });
+
+  if (!gameId) {
+    showErrorState(root, '找不到这一关，回首页选一关吧！');
+    return;
+  }
+
+  let currentGame = null;
+  const gameRoot = qs('#game-root', root);
+  const titleEl = qs('#game-title', root);
+  const currentStarsEl = qs('#current-stars', root);
+
+  renderStars(currentStarsEl, store.getStars(gameId), 'sm');
+
+  let mod;
+  try {
+    mod = await loadGameModule(gameId);
+  } catch (err) {
+    console.error(err);
+    showErrorState(root, '这一关还没准备好，回首页看看别的关卡吧！');
+    return;
+  }
+  currentGame = mod;
+  titleEl.textContent = `${mod.icon || '🧱'} ${mod.title || gameId}`;
+  mascot.say('拖积木、按 ▶ 试试看！', 'idle');
+
+  function makeApi() {
+    return {
+      complete(stars) { onComplete(stars); },
+      fail(reason) { onFail(reason); },
+      sfx,
+      mascot,
+      store,
+    };
+  }
+
+  function runInit() {
+    gameRoot.innerHTML = '';
+    try {
+      currentGame.init(gameRoot, makeApi());
+    } catch (err) {
+      console.error('game init failed', err);
+      showErrorState(root, '这一关出了点小状况，回首页看看别的关卡吧！');
+    }
+  }
+
+  function onFail(reason) {
+    sfx.fail();
+    mascot.say(pick(FAIL_LINES), 'oops');
+    gameRoot.classList.remove('anim-shake');
+    void gameRoot.offsetWidth;
+    gameRoot.classList.add('anim-shake');
+    if (reason) console.debug('[shell] level fail reason:', reason);
+  }
+
+  function onComplete(rawStars) {
+    const stars = Math.max(0, Math.min(3, Math.round(rawStars)));
+    const result = store.setStars(gameId, stars);
+    renderStars(currentStarsEl, result.best, 'sm');
+    showResultModal(stars, result);
+  }
+
+  function showResultModal(stars, result) {
+    const modalRoot = qs('#modal-root', root);
+    modalRoot.innerHTML = `
+      <div class="modal-overlay">
+        <div class="modal-card">
+          <div id="modal-mascot-slot" class="flex-center" style="margin-bottom:8px;"></div>
+          <h2 class="title-lg">关卡完成！</h2>
+          <div class="star-rating" id="modal-stars">
+            <span class="star" data-i="1">★</span>
+            <span class="star" data-i="2">★</span>
+            <span class="star" data-i="3">★</span>
+          </div>
+          <p class="text-muted" id="modal-msg" style="min-height:1.4em;"></p>
+          <div id="modal-badge" class="flex-col gap-2" style="align-items:center; margin: 8px 0 4px;"></div>
+          <div class="flex-row gap-3" style="justify-content:center; margin-top: 18px; flex-wrap: wrap;">
+            <button class="brick-btn brick-btn--gray" id="btn-retry">重试</button>
+            <button class="brick-btn brick-btn--yellow" id="btn-home2">返回首页</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const modalMascot = createMascot(qs('#modal-mascot-slot', modalRoot));
+    const emotion = stars >= 2 ? 'cheer' : stars === 1 ? 'happy' : 'think';
+    modalMascot.say(pick(COMPLETE_LINES[stars] || COMPLETE_LINES[0]), emotion, 0);
+    qs('#modal-msg', modalRoot).textContent = `本次获得 ${stars} 星 · 历史最佳 ${result.best} 星`;
+
+    if (result.badgeUnlocked) {
+      const badgeBox = qs('#modal-badge', modalRoot);
+      badgeBox.innerHTML = `
+        <div class="badge-hex" style="--badge-color: var(--cat-${result.badgeUnlocked}, var(--lego-yellow));">🏅</div>
+        <div class="title-sm">解锁新徽章！</div>
+      `;
+    }
+
+    // 逐颗弹出已获得的星星 + star 音效
+    const starEls = Array.from(modalRoot.querySelectorAll('#modal-stars .star'));
+    starEls.forEach((s, i) => {
+      setTimeout(() => {
+        if (i < stars) {
+          s.classList.add('star--filled');
+          sfx.star();
+        }
+      }, 260 + i * 380);
+    });
+
+    qs('#btn-retry', modalRoot).addEventListener('click', () => {
+      modalMascot.destroy();
+      modalRoot.innerHTML = '';
+      if (typeof currentGame.destroy === 'function') {
+        try { currentGame.destroy(); } catch (e) { /* noop */ }
+      }
+      mascot.say('加油，再来一次！', 'idle');
+      runInit();
+    });
+    qs('#btn-home2', modalRoot).addEventListener('click', () => {
+      if (typeof currentGame.destroy === 'function') {
+        try { currentGame.destroy(); } catch (e) { /* noop */ }
+      }
+      window.location.href = 'index.html';
+    });
+  }
+
+  runInit();
+}
+
+startShell();

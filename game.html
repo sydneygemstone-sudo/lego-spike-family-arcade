@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>关卡 · LEGO SPIKE Family Arcade</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%B1%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/design-system.css">
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+<div id="app"></div>
+<script>
+  // QA/自动化专用：URL 带 ?test=1 时打开 window.__LSFA_TEST__，关卡模块按需暴露只读测试钩子
+  // （目前 games/hunt.js、games/macro.js 用到，见各自文件内注释）。生产环境正常入口不会带
+  // 这个参数，不影响玩家体验。
+  if (new URLSearchParams(location.search).get('test') === '1') {
+    window.__LSFA_TEST__ = true;
+  }
+</script>
+<script type="module" src="js/shell.js"></script>
+</body>
+</html>
