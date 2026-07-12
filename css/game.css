@@ -36,6 +36,26 @@
 .star--sm { font-size: 20px; }
 .star-rating--sm { gap: 2px; }
 
+/* 难度徽标（L1/L2/L3），顶部栏标题旁 + 结算弹窗都用同一份样式 */
+.level-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--lego-blue);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.level-chip--modal {
+  display: inline-flex;
+  margin: 4px 0 10px;
+}
+
 .game-root {
   flex: 1;
   padding: var(--space-4);

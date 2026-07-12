@@ -425,6 +425,20 @@ h1, h2, h3, h4 { margin: 0 0 var(--space-3); font-weight: 800; line-height: 1.2;
   box-shadow: 0 4px 0 rgba(0,0,0,.18), 0 6px 10px rgba(0,0,0,.18);
 }
 
+/* 金徽章（该关 9 星满）：叠加金色光环 + 呼吸光效，locked/普通(铜) 之外的第三档视觉 */
+.badge-hex--gold {
+  box-shadow:
+    0 0 0 3px var(--lego-yellow),
+    0 4px 0 rgba(0,0,0,.18),
+    0 0 18px 4px rgba(245,197,24,.65);
+  animation: badge-gold-glow 2.2s ease-in-out infinite;
+}
+
+@keyframes badge-gold-glow {
+  0%, 100% { box-shadow: 0 0 0 3px var(--lego-yellow), 0 4px 0 rgba(0,0,0,.18), 0 0 12px 2px rgba(245,197,24,.5); }
+  50%      { box-shadow: 0 0 0 3px var(--lego-yellow-light), 0 4px 0 rgba(0,0,0,.18), 0 0 22px 6px rgba(245,197,24,.85); }
+}
+
 .badge-hex--locked {
   background: linear-gradient(160deg, #DEE3E7 0%, #C3C9CE 45%, #9AA3AB 100%);
   filter: grayscale(1);

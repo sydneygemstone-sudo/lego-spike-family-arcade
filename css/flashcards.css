@@ -11,6 +11,13 @@
 .fc-header .spike-mascot { width: 72px; }
 .fc-header > div:nth-child(2) { padding-top: 8px; }
 
+.fc-print-btn {
+  display: flex;
+  width: 100%;
+  margin-bottom: var(--space-4);
+  text-decoration: none;
+}
+
 .fc-tabs {
   display: flex;
   gap: var(--space-2);
@@ -138,6 +145,12 @@
 .fc-card-chinese {
   font-size: 16px;
   font-weight: 800;
+  margin-bottom: 6px;
+}
+.fc-card-legacy {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--ink-500);
   margin-bottom: 6px;
 }
 .fc-card-details {

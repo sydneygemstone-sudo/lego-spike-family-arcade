@@ -20,6 +20,11 @@
     <a href="index.html" class="brick-btn brick-btn--gray brick-btn--sm">← 首页</a>
   </header>
 
+  <a class="brick-btn brick-btn--yellow brick-btn--lg fc-print-btn tap-target"
+     href="assets/pdf/Lego_Spike_Prime_Flashcards_And_Games.pdf" target="_blank" rel="noopener">
+    🖨️ 打印纸质闪卡 (PDF)
+  </a>
+
   <div class="fc-tabs">
     <button class="fc-tab-btn fc-tab-btn--active" data-tab="browse">浏览闪卡</button>
     <button class="fc-tab-btn" data-tab="quiz">小测验</button>
@@ -81,6 +86,7 @@ function renderGrid() {
         </div>
         <div class="flip-card-face flip-card-back">
           <div class="fc-card-chinese">${escapeHtml(card.chinese)}</div>
+          ${card.legacyName ? `<div class="fc-card-legacy">学名：${escapeHtml(card.legacyName)}</div>` : ''}
           <div class="fc-card-details">${escapeHtml(card.details || '')}</div>
           ${card.action ? `<div class="fc-card-action"><span class="fc-card-action-label">亲子体感动作：</span>${escapeHtml(card.action)}</div>` : ''}
         </div>

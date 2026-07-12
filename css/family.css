@@ -1,0 +1,223 @@
+/* css/family.css — family.html（一起玩 · 全家真人互动游戏）页面样式
+ * 场景：iPad 平放/立起在客厅茶几上，全家人隔 2 米看——展示区要超大字/超大图标、
+ * 高对比，操作按钮 ≥60px。所有真人游戏共享这套"主持人框架"外观，具体每个游戏的
+ * 题面 markup 由 family-games/<id>.js 自己生成，直接复用下面这些类名即可。
+ */
+
+.family-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- 顶部栏 ---- */
+.family-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--paper-0);
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-wrap: wrap;
+}
+.family-topbar-mascot { flex-shrink: 0; }
+.family-topbar-mascot .spike-mascot { width: 58px; }
+.family-topbar-title { flex: 1; min-width: 140px; }
+.family-topbar-title h1 {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-h3);
+}
+.family-checkin {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.family-playcount {
+  font-size: var(--font-small);
+  font-weight: 700;
+  color: var(--ink-500);
+  white-space: nowrap;
+}
+
+/* ---- 一句话玩法说明横幅（家长 10 秒内看懂怎么主持） ---- */
+.family-howto {
+  background: linear-gradient(90deg, var(--lego-orange-light), var(--lego-yellow-light));
+  color: var(--ink-900);
+  font-weight: 800;
+  font-size: var(--font-body);
+  text-align: center;
+  padding: 10px var(--space-4);
+  border-bottom: 3px solid var(--lego-orange);
+}
+
+.family-root {
+  flex: 1;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  justify-content: safe center;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ---- 大字卡展示区（共享类名，各关卡自己拼 markup） ---- */
+.family-stage {
+  background: var(--paper-0);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 34vh;
+  text-align: center;
+}
+.family-card-icon {
+  width: clamp(120px, 26vw, 220px);
+  height: clamp(120px, 26vw, 220px);
+  flex-shrink: 0;
+}
+.family-card-icon svg { width: 100%; height: 100%; display: block; }
+.family-card-text {
+  font-size: clamp(30px, 6.5vw, 68px);
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--ink-900);
+}
+.family-card-sub {
+  font-size: clamp(15px, 2.6vw, 22px);
+  font-weight: 700;
+  color: var(--ink-500);
+}
+.family-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+.family-card-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---- 翻面对答案 ---- */
+.family-flipcard { perspective: 1400px; width: 100%; }
+.family-flipcard-inner {
+  position: relative;
+  width: 100%;
+  min-height: 260px;
+  transition: transform .6s cubic-bezier(.4,.2,.2,1);
+  transform-style: preserve-3d;
+}
+.family-flipcard.is-flipped .family-flipcard-inner { transform: rotateY(180deg); }
+.family-flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  text-align: center;
+}
+.family-flip-face--front { background: var(--paper-0); box-shadow: var(--shadow-card); }
+.family-flip-face--back {
+  background: var(--paper-100);
+  box-shadow: var(--shadow-card);
+  transform: rotateY(180deg);
+  border: 3px dashed var(--lego-orange);
+}
+
+/* ---- 圆形倒计时 ---- */
+.family-countdown { position: relative; margin: 0 auto; }
+.family-countdown svg { transform: rotate(-90deg); display: block; }
+.family-countdown .fcd-bg { fill: none; stroke: var(--paper-200); stroke-width: 10; }
+.family-countdown .fcd-fg { fill: none; stroke: var(--lego-orange); stroke-width: 10; stroke-linecap: round; }
+.family-countdown-num {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(28px, 6vw, 46px);
+  font-weight: 800;
+  color: var(--ink-900);
+}
+
+/* ---- 节拍器 ---- */
+.family-beat-dot {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: var(--lego-cyan);
+  box-shadow: 0 4px 0 var(--lego-cyan-dark);
+  margin: 0 auto;
+  transition: transform .08s ease;
+}
+.family-beat-dot--pulse { animation: family-beat-pulse .28s ease; }
+@keyframes family-beat-pulse {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.35); background: var(--lego-yellow); }
+  100% { transform: scale(1); background: var(--lego-cyan); }
+}
+
+/* ---- 角色互换 ---- */
+.family-roleswap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+.family-role-current {
+  font-size: clamp(20px, 4vw, 28px);
+  font-weight: 800;
+  color: var(--lego-purple);
+  background: var(--paper-100);
+  padding: 6px 20px;
+  border-radius: 999px;
+}
+
+/* ---- 全屏触发遮罩（ifthen 用：红/绿屏或提示音的全屏反馈） ---- */
+.family-flash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s ease;
+}
+.family-flash-overlay.is-on { opacity: 1; }
+.family-flash-overlay .fo-label {
+  font-size: clamp(44px, 11vw, 130px);
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 4px 0 rgba(0,0,0,.25);
+  text-align: center;
+  padding: 0 var(--space-4);
+}
+
+/* 家庭真人游戏场景手忙脚乱，按钮统一放大到 ≥60px（覆盖 design-system.css 默认 44/56px） */
+.family-page .brick-btn { min-height: 60px; }
+.family-page .brick-btn--sm { min-height: 60px; padding: 10px 18px; }
+.family-page .brick-btn--lg { min-height: 72px; }
+
+@media (max-width: 820px) {
+  .family-root { padding: var(--space-3); }
+  .family-topbar-title h1 { font-size: var(--font-body); }
+}

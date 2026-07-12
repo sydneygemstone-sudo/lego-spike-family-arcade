@@ -1,27 +1,35 @@
-/* games/hunt.js — 1. 网格寻宝 (spec §3.1 / teaching-redesign-v2 §「hunt 网格寻宝」)
- * 机制不变（5x5 网格拖积木编程，已验证可玩）。本次只换美术：
- * 地块用 assets/art.js 的 tiles.grass/rock/gem/flag，机器人用 roverTop（DOM/SVG 图层
+/* games/hunt.js — 1. 网格寻宝 (spec §3.1 / teaching-redesign-v2 §「hunt 网格寻宝」/ games-v3-redesign §五)
+ * 机制不变（拖积木编程走网格找宝藏，已验证可玩）。v3 只加 3 个 level：
+ *   L1 现状 5×5（2-3 块岩石，无资源限制）
+ *   L2 6×6 + 岩石 4-5 块 + 指令块总数限制（最优步数+2 块封顶，托盘显示"剩余可用 X 块"）——资源约束逼规划
+ *   L3 6×6 + 一对传送门（tiles.portal 紫=入口 A / 蓝=出口 B，双向，走进任一门从另一门出来、朝向保持）——
+ *       生成时用 BFS 保证传送门确实"划算"（比不走传送门至少省 2 步，或压根走不到），随机布局验证有解
+ * 地块用 assets/art.js 的 tiles.grass/rock/gem/flag/portal，机器人用 roverTop（DOM/SVG 图层
  * 平移+旋转补间，弃用旧 Canvas 渲染器 games/_rover-renderer.js —— 该文件保留不删，只是
  * 这一关不再 import 它）。
  * 星级：3=最优步数，2=多≤3步，1=完成（"步数"=实际用到 Grab 为止消耗的指令数，
- * 与 BFS 算出的最短指令数——含转向——比较）。
+ * 与 BFS 算出的最短指令数——含转向、含传送边——比较）。
  */
 
 import { createTray, createSequence } from '../js/blocks-ui.js';
 import { roverTop, tiles } from '../assets/art.js';
 
-const GRID_SIZE = 5;
+let GRID_SIZE = 5; // 按 api.level 在 init() 里重设（L1=5，L2/L3=6）；同一次页面加载内 level 不会变，安全
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // up, right, down, left（facing 0-3）
 const MOVE_MS = 380;
 const TURN_MS = 260;
 const STEP_GAP_MS = 150;
 const BUMP_MS = 260;
+const WARP_MS = 380;
 
 function randInt(n) { return Math.floor(Math.random() * n); }
+function randRange(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
 function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
-/** BFS：从 (start,facing) 到 treasure 所在格（任意朝向）的最短指令数（forward/left/right 各计 1 步）。 */
-function bfsOptimalSteps(start, facing, treasure, obstacles, size) {
+/** BFS：从 (start,facing) 到 treasure 所在格（任意朝向）的最短指令数（forward/left/right 各计 1 步）。
+ *  portals 传入 {a:{col,row}, b:{col,row}} 时，forward 走进任一门格会在同一步内传送到另一门格
+ *  （朝向不变）——即传送边和普通移动一样只算 1 步指令。portals 传 null/undefined 时按普通格处理。 */
+function bfsOptimalSteps(start, facing, treasure, obstacles, size, portals) {
   const startKey = `${start.col},${start.row},${facing}`;
   const dist = new Map([[startKey, 0]]);
   const queue = [{ col: start.col, row: start.row, facing, d: 0 }];
@@ -34,8 +42,12 @@ function bfsOptimalSteps(start, facing, treasure, obstacles, size) {
       { col: cur.col, row: cur.row, facing: (cur.facing + 1) % 4 },
     ];
     const [dc, dr] = DIRS[cur.facing];
-    const nc = cur.col + dc, nr = cur.row + dr;
+    let nc = cur.col + dc, nr = cur.row + dr;
     if (nc >= 0 && nc < size && nr >= 0 && nr < size && !obstacles.has(`${nc},${nr}`)) {
+      if (portals) {
+        if (nc === portals.a.col && nr === portals.a.row) { nc = portals.b.col; nr = portals.b.row; }
+        else if (nc === portals.b.col && nr === portals.b.row) { nc = portals.a.col; nr = portals.a.row; }
+      }
       candidates.push({ col: nc, row: nr, facing: cur.facing });
     }
     for (const m of candidates) {
@@ -49,14 +61,38 @@ function bfsOptimalSteps(start, facing, treasure, obstacles, size) {
   return null; // 不可达
 }
 
-function generateLevel() {
-  const size = GRID_SIZE;
-  for (let attempt = 0; attempt < 80; attempt++) {
+/** 挑一对不重叠的空地作传送门 A/B（排除起点/宝藏/岩石）；场地太挤找不到返回 null。 */
+function pickPortalPair(size, start, treasure, obstacles) {
+  const blocked = new Set(obstacles);
+  blocked.add(`${start.col},${start.row}`);
+  blocked.add(`${treasure.col},${treasure.row}`);
+  const free = [];
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (!blocked.has(`${c},${r}`)) free.push({ col: c, row: r });
+    }
+  }
+  if (free.length < 2) return null;
+  const ai = randInt(free.length);
+  let bi = randInt(free.length);
+  let guard = 0;
+  while (bi === ai && guard < 12) { bi = randInt(free.length); guard++; }
+  if (bi === ai) return null;
+  return { a: free[ai], b: free[bi] };
+}
+
+function generateLevel(apiLevel) {
+  const size = apiLevel === 1 ? 5 : 6;
+  const usePortal = apiLevel === 3;
+  const obstacleRange = apiLevel === 1 ? [2, 3] : apiLevel === 2 ? [4, 5] : [3, 4];
+  const maxAttempts = usePortal ? 240 : 80;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const start = { col: randInt(size), row: randInt(size) };
     let treasure;
     do { treasure = { col: randInt(size), row: randInt(size) }; }
     while (treasure.col === start.col && treasure.row === start.row);
-    const obstacleCount = 2 + randInt(2); // 2-3
+    const obstacleCount = randRange(obstacleRange[0], obstacleRange[1]);
     const obstacles = new Set();
     let tries = 0;
     while (obstacles.size < obstacleCount && tries < 300) {
@@ -66,21 +102,40 @@ function generateLevel() {
       obstacles.add(`${c},${r}`);
     }
     const facing = randInt(4);
-    const dist = bfsOptimalSteps(start, facing, treasure, obstacles, size);
-    if (dist != null) {
-      return { size, start, facing, treasure, obstacles, optimalSteps: dist + 1 }; // +1 = 最后的 Grab
+
+    let portals = null;
+    if (usePortal) {
+      portals = pickPortalPair(size, start, treasure, obstacles);
+      if (!portals) continue;
     }
+
+    const dist = bfsOptimalSteps(start, facing, treasure, obstacles, size, portals);
+    if (dist == null) continue;
+
+    if (usePortal) {
+      // 传送门必须"划算"：要么不走传送门根本到不了，要么走传送门比不走至少省 2 步——
+      // 两种情况都保证任何一条最优路径必然用到传送门（规划复杂度真的上升，不是摆设）。
+      const distNoPortal = bfsOptimalSteps(start, facing, treasure, obstacles, size, null);
+      const portalPaysOff = distNoPortal == null || (distNoPortal - dist) >= 2;
+      if (!portalPaysOff) continue;
+    }
+
+    return { size, start, facing, treasure, obstacles, portals, optimalSteps: dist + 1 }; // +1 = 最后的 Grab
   }
-  // 兜底（理论上不会走到）：清空障碍，保证可达
+
+  // 兜底（理论上不会走到）：清空障碍与传送门，保证可达
   return {
     size, start: { col: 0, row: 0 }, facing: 1,
-    treasure: { col: size - 1, row: size - 1 }, obstacles: new Set(),
+    treasure: { col: size - 1, row: size - 1 }, obstacles: new Set(), portals: null,
     optimalSteps: (size - 1) * 2 + 1,
   };
 }
 
 /* --------------------------------------------------------------------------
- * 一次性注入本关专属样式（网格地块 + roverTop 图层的 transform 接口）
+ * 一次性注入本关专属样式（网格地块 + roverTop 图层的 transform 接口）。
+ * GRID_SIZE 在 init() 里已按 api.level 定好——同一次页面加载内 level 不会变
+ * （切换难度是整页跳转 game.html?l=，重试是同 level 内 destroy+init），所以这里
+ * 把 GRID_SIZE 相关的百分比/格数烘进这份只注入一次的 <style> 是安全的。
  * -------------------------------------------------------------------------- */
 let stylesInjected = false;
 function injectStylesOnce() {
@@ -88,14 +143,14 @@ function injectStylesOnce() {
   stylesInjected = true;
   const style = document.createElement('style');
   style.textContent = `
-    .hunt-stage-card { min-height: 54vh; display:flex; flex-direction:column; }
-    .hunt-grid-outer { flex:1; display:flex; align-items:center; justify-content:center; padding: 6px 0; }
+    .hunt-stage-card { display:flex; flex-direction:column; }
+    .hunt-grid-outer { flex:1; max-height:36vh; display:flex; align-items:center; justify-content:center; padding: 6px 0; }
     .hunt-grid {
       position: relative;
       display: grid;
       grid-template-columns: repeat(${GRID_SIZE}, 1fr);
       grid-template-rows: repeat(${GRID_SIZE}, 1fr);
-      width: min(74vw, 58vh);
+      width: min(70vw, 36vh);
       aspect-ratio: 1 / 1;
       border-radius: var(--radius-md);
       overflow: hidden;
@@ -118,16 +173,24 @@ function injectStylesOnce() {
     .hunt-rover-rot svg { width:100%; height:100%; display:block; }
     .hunt-rover-squash { width:100%; height:100%; }
     .hunt-rover-squash.hunt-bump { animation: hunt-bump ${BUMP_MS}ms ease; }
+    .hunt-rover-squash.hunt-portal-warp { animation: hunt-portal-warp ${WARP_MS}ms ease; }
     @keyframes hunt-bump {
       0%, 100% { transform: scale(1,1); }
       45% { transform: scale(1.22, 0.8); }
       70% { transform: scale(0.92, 1.1); }
+    }
+    @keyframes hunt-portal-warp {
+      0%   { transform: scale(1) rotate(0deg); opacity:1; }
+      40%  { transform: scale(.15) rotate(160deg); opacity:.25; }
+      60%  { transform: scale(.15) rotate(200deg); opacity:.25; }
+      100% { transform: scale(1) rotate(360deg); opacity:1; }
     }
     .hunt-idle-bob { animation: hunt-idle-bob 2.1s ease-in-out infinite; }
     @keyframes hunt-idle-bob {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-3%); }
     }
+    .hunt-budget { margin-top:6px; }
   `;
   document.head.appendChild(style);
 }
@@ -190,12 +253,34 @@ function resetLogicalState() {
   grabbed = false;
 }
 
+/** 传送门命中检测：col/row 是 A 门返回 'a'，是 B 门返回 'b'，都不是返回 null。 */
+function portalSideAt(col, row) {
+  if (!level.portals) return null;
+  if (col === level.portals.a.col && row === level.portals.a.row) return 'a';
+  if (col === level.portals.b.col && row === level.portals.b.row) return 'b';
+  return null;
+}
+
+function portalExitOf(side) {
+  return side === 'a' ? level.portals.b : level.portals.a;
+}
+
 function cellKind(col, row) {
   const key = `${col},${row}`;
   if (level.obstacles.has(key)) return 'rock';
+  const portalSide = portalSideAt(col, row);
+  if (portalSide === 'a') return 'portal-a';
+  if (portalSide === 'b') return 'portal-b';
   if (!grabbed && col === level.treasure.col && row === level.treasure.row) return 'gem';
   if (col === level.start.col && row === level.start.row) return 'flag';
   return 'grass';
+}
+
+/** 地块 SVG 取用：普通地块走 tiles[kind]()，传送门走 tiles.portal(size,hue)（紫=A/蓝=B）。 */
+function tileMarkup(kind) {
+  if (kind === 'portal-a') return tiles.portal(72, 'purple');
+  if (kind === 'portal-b') return tiles.portal(72, 'blue');
+  return tiles[kind]();
 }
 
 function renderGrid() {
@@ -203,7 +288,7 @@ function renderGrid() {
   for (let r = 0; r < GRID_SIZE; r++) {
     for (let c = 0; c < GRID_SIZE; c++) {
       const kind = cellKind(c, r);
-      html += `<div class="hunt-cell" data-col="${c}" data-row="${r}">${tiles[kind]()}</div>`;
+      html += `<div class="hunt-cell" data-col="${c}" data-row="${r}">${tileMarkup(kind)}</div>`;
     }
   }
   html += `
@@ -223,7 +308,7 @@ function renderGrid() {
 /** 只重绘"是否已拾取宝藏"这一格（挖到宝藏后清掉 gem 贴图），避免整网格重绘打断动画层。 */
 function refreshTreasureCell() {
   const cell = gridEl.querySelector(`.hunt-cell[data-col="${level.treasure.col}"][data-row="${level.treasure.row}"]`);
-  if (cell) cell.innerHTML = tiles[cellKind(level.treasure.col, level.treasure.row)]();
+  if (cell) cell.innerHTML = tileMarkup(cellKind(level.treasure.col, level.treasure.row));
 }
 
 async function runInstruction(block, index) {
@@ -256,6 +341,28 @@ async function runInstruction(block, index) {
     moveRoverTo(nc, nr);
     await wait(MOVE_MS);
     if (destroyed) return { ok: false };
+
+    const portalSide = portalSideAt(nc, nr);
+    if (portalSide) {
+      // 传送门：先走到门口（上面已经播完那段滑动），再来一次"缩小转圈→瞬移→放大"的传送动画，
+      // 落点朝向保持不变（只换位置，不碰 angleDeg/logicalFacing）。
+      const exit = portalExitOf(portalSide);
+      apiRef.sfx.snap();
+      if (roverSquashEl) {
+        roverSquashEl.classList.remove('hunt-portal-warp');
+        void roverSquashEl.offsetWidth;
+        roverSquashEl.classList.add('hunt-portal-warp');
+      }
+      await wait(WARP_MS * 0.55);
+      if (destroyed) return { ok: false };
+      placeRoverInstant(exit.col, exit.row, angleDeg);
+      logicalCol = exit.col; logicalRow = exit.row;
+      await wait(WARP_MS * 0.45);
+      if (destroyed) return { ok: false };
+      if (roverSquashEl) roverSquashEl.classList.remove('hunt-portal-warp');
+      return { ok: true };
+    }
+
     logicalCol = nc; logicalRow = nr;
     return { ok: true };
   }
@@ -349,6 +456,7 @@ function buildDOM(container) {
       <div class="brick-card brick-card--blue">
         <div class="title-sm" style="margin-bottom:4px;">积木托盘</div>
         <div id="hunt-tray"></div>
+        <div class="text-muted title-sm hunt-budget" id="hunt-budget" style="display:none;"></div>
       </div>
       <div class="brick-card brick-card--yellow">
         <div class="flex-between flex-wrap gap-2" style="margin-bottom:4px;">
@@ -370,11 +478,12 @@ export default {
   icon: '🗺️',
 
   init(container, api) {
+    GRID_SIZE = api.level === 1 ? 5 : 6; // 同一次页面加载内 level 恒定，先定好再注入样式
     injectStylesOnce();
     destroyed = false;
     running = false;
     apiRef = api;
-    level = generateLevel();
+    level = generateLevel(api.level);
 
     buildDOM(container);
     gridEl = container.querySelector('#hunt-grid');
@@ -385,6 +494,7 @@ export default {
     const trayEl = container.querySelector('#hunt-tray');
     const seqEl = container.querySelector('#hunt-seq');
     const statusEl = container.querySelector('#hunt-status');
+    const budgetEl = container.querySelector('#hunt-budget');
 
     createTray(trayEl, [
       { id: 'fwd', label: 'Move Forward', color: 'blue', icon: '⬆️' },
@@ -393,11 +503,24 @@ export default {
       { id: 'grab', label: 'Grab', color: 'orange', icon: '✋' },
     ]);
 
-    seq = createSequence(seqEl, { maxSlots: 20, emptyText: '把积木拖到这里，规划路线 →' });
+    // L2：指令块总数限制（资源约束逼规划）= 最优步数（含 Grab）+2 块封顶；L1/L3 沿用宽松上限。
+    const hasBudgetCap = api.level === 2;
+    const maxSlots = hasBudgetCap ? level.optimalSteps + 2 : 20;
+
+    function refreshBudget(count) {
+      if (!hasBudgetCap) { budgetEl.style.display = 'none'; return; }
+      budgetEl.style.display = '';
+      const remaining = Math.max(0, maxSlots - count);
+      budgetEl.textContent = `🧱 剩余可用 ${remaining} 块（挑战：${maxSlots} 块内完成）`;
+    }
+    refreshBudget(0);
+
+    seq = createSequence(seqEl, { maxSlots, emptyText: '把积木拖到这里，规划路线 →' });
     seqUnsub = seq.onChange((list) => {
       statusEl.textContent = list.length
         ? `当前程序：${list.length} 块积木 · 按 ▶ 试试看！`
         : '拖积木规划路线，带机器人找到宝藏！';
+      refreshBudget(list.length);
     });
 
     // 测试专用只读钩子：仅在 window.__LSFA_TEST__ 显式为 true 时挂载，生产环境不受影响，
@@ -426,7 +549,13 @@ export default {
 
     // 网格/机器人图层全部走百分比布局（CSS grid + %-based transform），随窗口自适应，无需 JS 重算尺寸。
 
-    apiRef.mascot.say('拖积木、按 ▶ 带我去找宝藏吧！', 'idle');
+    if (api.level === 3) {
+      apiRef.mascot.say('这次场上有传送门！走进一扇门，会从另一扇门出来哦～', 'idle');
+    } else if (api.level === 2) {
+      apiRef.mascot.say(`积木数量有限，${maxSlots} 块内规划出路线！`, 'idle');
+    } else {
+      apiRef.mascot.say('拖积木、按 ▶ 带我去找宝藏吧！', 'idle');
+    }
   },
 
   destroy() {

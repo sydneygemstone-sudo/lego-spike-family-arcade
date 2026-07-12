@@ -379,3 +379,214 @@ export function dialFrame({ label = '圈数' } = {}) {
   <text x="75" y="176" font-size="15" font-weight="800" fill="${OUTLINE}" text-anchor="middle">${label}</text>
 </svg>`;
 }
+
+/* ============================================================================
+ * v3 新增资产（2026-07-13 · claw 重做 / hunt 传送门 / sort 彩色包裹 /
+ * bridge 大小轮 —— Fable 5 亲绘，worker 禁改图形）
+ * ========================================================================== */
+
+/* ----------------------------------------------------------------------------
+ * 12. 娃娃机机厢 · 侧视（claw v3 主场景）
+ * 教学结构直接画进图里：顶部导轨 + 齿轮爪车（转圈→横移），底部编号位置格。
+ * gridCount = 位置格数；unitLabel 显示"1圈=N格"的图例。
+ * 动画接口：#claw-trolley 组做 translateX 横移（用 clawGridX(i) 求目标 x），
+ * 其内 #claw-gear 做 rotate（横移时转动），#claw-hoist 做 translateY 下降，
+ * #claw-fingers-l/r 做 rotate 开合。奖品由逻辑层叠放在 clawGridX(i) 底格上方。
+ * -------------------------------------------------------------------------- */
+export function clawMachineScene({ gridCount = 8 } = {}) {
+  const cell = 66, x0 = 96, floorY = 320, railY = 78;
+  const W = x0 + gridCount * cell + 60;
+  // 起点标记（S 位，爪车 0 位正下方）+ 等距位置格 1..N（格 i 中心 = x0 + i*cell，与"1圈=1格"严格对应）
+  let grid = `<circle cx="${x0}" cy="${floorY + 22}" r="14" fill="#57B84E" stroke="#37474F" stroke-width="2.2"/>
+      <text x="${x0}" y="${floorY + 23}" font-size="14" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">S</text>`;
+  for (let i = 1; i <= gridCount; i++) {
+    const x = x0 + i * cell;
+    grid += `<line x1="${x - cell / 2}" y1="${floorY}" x2="${x - cell / 2}" y2="${floorY - 10}" stroke="#B9C7D4" stroke-width="2"/>
+      <circle cx="${x}" cy="${floorY + 22}" r="14" fill="#FFFFFF" stroke="#37474F" stroke-width="2.2"/>
+      <text x="${x}" y="${floorY + 23}" font-size="15" font-weight="800" fill="#37474F" text-anchor="middle" dominant-baseline="middle">${i}</text>`;
+  }
+  return `
+<svg viewBox="0 0 ${W} 390" xmlns="http://www.w3.org/2000/svg">
+  <!-- 机厢外框 -->
+  <rect x="8" y="8" width="${W - 16}" height="374" rx="20" fill="#EAF6F8" stroke="#37474F" stroke-width="3"/>
+  <!-- 顶部招牌灯条 -->
+  <rect x="8" y="8" width="${W - 16}" height="34" rx="17" fill="#F5C518" stroke="#37474F" stroke-width="3"/>
+  ${Array.from({ length: Math.floor((W - 60) / 46) }, (_, i) => `<circle cx="${34 + i * 46}" cy="25" r="6" fill="#FFF7DC" stroke="#E0A800" stroke-width="1.5"/>`).join('')}
+  <!-- 导轨（带齿条纹理） -->
+  <rect x="${x0 - 40}" y="${railY - 8}" width="${gridCount * cell + 80}" height="16" rx="8" fill="#9AA7B4" stroke="#37474F" stroke-width="2.5"/>
+  ${Array.from({ length: Math.floor((gridCount * cell + 60) / 16) }, (_, i) => `<line x1="${x0 - 30 + i * 16}" y1="${railY + 8}" x2="${x0 - 22 + i * 16}" y2="${railY + 8}" stroke="#6E7B88" stroke-width="3"/>`).join('')}
+  <!-- 爪车（逻辑层对此组 translateX；初始在 0 位 = 导轨最左） -->
+  <g id="claw-trolley">
+    <rect x="${x0 - 34}" y="${railY - 26}" width="68" height="30" rx="8" fill="#F5C518" stroke="#37474F" stroke-width="2.5"/>
+    <circle cx="${x0 - 20}" cy="${railY - 30}" r="4" fill="#FFE066" stroke="#37474F" stroke-width="1.5"/>
+    <circle cx="${x0 + 20}" cy="${railY - 30}" r="4" fill="#FFE066" stroke="#37474F" stroke-width="1.5"/>
+    <!-- 驱动齿轮（横移时 rotate，教学：转圈→位移） -->
+    <g id="claw-gear" transform="rotate(0 ${x0} ${railY + 14})">
+      <circle cx="${x0}" cy="${railY + 14}" r="15" fill="#00A3B2" stroke="#37474F" stroke-width="2.5"/>
+      ${Array.from({ length: 8 }, (_, i) => { const a = (Math.PI * 2 * i) / 8; return `<rect x="${x0 + Math.cos(a) * 15 - 3}" y="${railY + 14 + Math.sin(a) * 15 - 3}" width="6" height="6" rx="1.5" fill="#00A3B2" stroke="#37474F" stroke-width="1.5" transform="rotate(${(360 / 16) + i * 45} ${x0 + Math.cos(a) * 15} ${railY + 14 + Math.sin(a) * 15})"/>`; }).join('')}
+      <circle cx="${x0}" cy="${railY + 14}" r="5" fill="#BDF3F8" stroke="#37474F" stroke-width="1.8"/>
+    </g>
+    <!-- 吊臂组（逻辑层对此组 translateY 下降；缆绳用 #claw-cable 的 height 拉长） -->
+    <g id="claw-hoist">
+      <line id="claw-cable" x1="${x0}" y1="${railY + 26}" x2="${x0}" y2="${railY + 74}" stroke="#37474F" stroke-width="3.5"/>
+      <circle cx="${x0}" cy="${railY + 82}" r="11" fill="#F5C518" stroke="#37474F" stroke-width="2.5"/>
+      <path id="claw-fingers-l" d="M${x0 - 4} ${railY + 90} Q${x0 - 20} ${railY + 104} ${x0 - 13} ${railY + 118}" stroke="#37474F" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <path id="claw-fingers-r" d="M${x0 + 4} ${railY + 90} Q${x0 + 20} ${railY + 104} ${x0 + 13} ${railY + 118}" stroke="#37474F" stroke-width="5" fill="none" stroke-linecap="round"/>
+    </g>
+  </g>
+  <!-- 底部平台与位置格 -->
+  <rect x="${x0 - 40}" y="${floorY}" width="${gridCount * cell + 80}" height="12" rx="6" fill="#C7D6E4" stroke="#37474F" stroke-width="2.5"/>
+  ${grid}
+  <!-- 出奖口（左端） -->
+  <rect x="${x0 - 78}" y="${floorY - 52}" width="44" height="64" rx="8" fill="#0055BF" stroke="#37474F" stroke-width="2.5"/>
+  <rect x="${x0 - 70}" y="${floorY - 40}" width="28" height="40" rx="5" fill="#3D7BD9"/>
+  <text x="${x0 - 56}" y="${floorY - 58}" font-size="13" font-weight="800" fill="#37474F" text-anchor="middle">出奖口</text>
+</svg>`;
+}
+
+/** claw v3：移动到第 i 格时 trolley 的 translateX 偏移（0 = 起点 S 位；每格 = 66px，与"1圈=1格"严格等距） */
+export function clawGridX(i) {
+  const cell = 66;
+  return Math.max(0, i) * cell;
+}
+
+/* ----------------------------------------------------------------------------
+ * 13. 传送门地块（hunt L3）：一对漩涡门 A/B
+ * -------------------------------------------------------------------------- */
+tiles.portal = (s = 72, hue = 'purple') => {
+  const cs = hue === 'purple' ? ['#B39DDB', '#7E57C2', '#4527A0'] : ['#81D4FA', '#29B6F6', '#0277BD'];
+  return `<svg viewBox="0 0 72 72" width="${s}" height="${s}" xmlns="http://www.w3.org/2000/svg">
+  <rect x="1.5" y="1.5" width="69" height="69" rx="8" fill="#DFF0DA" stroke="#C4DDBC" stroke-width="2"/>
+  <ellipse cx="36" cy="36" rx="24" ry="27" fill="${cs[0]}" stroke="#37474F" stroke-width="2.6"/>
+  <ellipse cx="36" cy="36" rx="16" ry="19" fill="${cs[1]}"/>
+  <path d="M36 14 q16 8 8 22 q-6 12 -14 8 q-8 -4 -2 -12 q5 -7 -2 -10" fill="none" stroke="${cs[2]}" stroke-width="4" stroke-linecap="round"/>
+  <ellipse cx="36" cy="36" rx="5" ry="6" fill="#FFFFFF" opacity="0.9"/>
+</svg>`;
+};
+
+/* ----------------------------------------------------------------------------
+ * 14. beltScene 彩色包裹版（sort v3）：colors = ['red'|'blue'|'yellow', ...]
+ * 序列即题面；包裹颜色决定要执行的分拣动作。
+ * -------------------------------------------------------------------------- */
+export function beltSceneColored({ colors = ['red', 'blue', 'blue'] } = {}) {
+  const palette = { red: ['#E8443F', '#C62D28'], blue: ['#3D7BD9', '#2557A8'], yellow: ['#F5C518', '#D9A800'] };
+  const n = colors.length;
+  const seg = 78, bx = 130, by = 130;
+  const W = bx + n * seg + 170;
+  let parcels = '', rollers = '';
+  colors.forEach((c, i) => {
+    const [f, d] = palette[c] || palette.red;
+    const x = bx + i * seg + seg / 2;
+    parcels += `
+    <g class="parcel" data-idx="${i}" transform="translate(${x} ${by - 32})">
+      <rect x="-22" y="-22" width="44" height="42" rx="5" fill="${f}" stroke="#37474F" stroke-width="2.4"/>
+      <line x1="0" y1="-22" x2="0" y2="20" stroke="${d}" stroke-width="6"/>
+      <circle cx="0" cy="-1" r="8.5" fill="#FFFFFF" stroke="#37474F" stroke-width="2"/>
+      <text x="0" y="0" font-size="10.5" font-weight="800" fill="#37474F" text-anchor="middle" dominant-baseline="middle">${i + 1}</text>
+    </g>`;
+  });
+  const rollerCount = Math.floor((n * seg + 60) / 44);
+  for (let i = 0; i <= rollerCount; i++) {
+    rollers += `<circle cx="${bx - 26 + i * 44}" cy="${by + 20}" r="12" fill="#9AA7B4" stroke="#37474F" stroke-width="2.2"/><circle cx="${bx - 26 + i * 44}" cy="${by + 20}" r="3.6" fill="#E3E9EF"/>`;
+  }
+  return `
+<svg viewBox="0 0 ${W} 200" xmlns="http://www.w3.org/2000/svg">
+  <rect x="${W - 140}" y="20" width="122" height="146" rx="10" fill="#CFE0EE" stroke="#37474F" stroke-width="2.5"/>
+  <rect x="${W - 124}" y="52" width="90" height="114" rx="6" fill="#8FB3D4" stroke="#37474F" stroke-width="2"/>
+  <text x="${W - 79}" y="42" font-size="15" font-weight="800" fill="#37474F" text-anchor="middle">分拣站</text>
+  <rect x="${bx - 40}" y="${by}" width="${n * seg + 80}" height="18" rx="9" fill="#4A4A4A" stroke="#37474F" stroke-width="2.5"/>
+  <line x1="${bx - 30}" y1="${by + 9}" x2="${bx + n * seg + 30}" y2="${by + 9}" stroke="#6E6E6E" stroke-width="4" stroke-dasharray="9 11"/>
+  ${rollers}
+  ${parcels}
+</svg>`;
+}
+
+/* ----------------------------------------------------------------------------
+ * 15. roverSide 大小轮版（bridge v3）：wheelScale 1 = 小轮(1圈1步)，1.45 = 大轮(1圈2步)
+ * 大轮视觉上明显更大并带双圈胎纹，孩子一眼分清。
+ * -------------------------------------------------------------------------- */
+export function roverSideWheeled({ wheelAngle = 0, face = 'happy', wheelScale = 1 } = {}) {
+  const base = roverSide({ wheelAngle, face });
+  if (wheelScale === 1) return base;
+  // 大轮：放大轮组并加外圈胎纹
+  return base
+    .replace(/r="20"/g, 'r="28"')
+    .replace(/r="13"/g, 'r="18"')
+    .replace('</svg>', `<circle cx="44" cy="82" r="24" fill="none" stroke="#5A5A5A" stroke-width="2" stroke-dasharray="5 6"/><circle cx="106" cy="82" r="24" fill="none" stroke="#5A5A5A" stroke-width="2" stroke-dasharray="5 6"/></svg>`);
+}
+
+/* ----------------------------------------------------------------------------
+ * 16. 真人互动游戏动作图标集（「一起玩」分类用 · 简笔小人，姿态一眼可读）
+ * 统一 96×96；主体深灰粗线，动作强调部位橙色。key 与真人游戏配置对应。
+ * -------------------------------------------------------------------------- */
+const P = '#37474F', ACC = '#FF8F00';
+const stick = (body) => `<svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
+export const actionIcons = {
+  /* 蹲下：屈膝低重心，双手前平 */
+  squat: () => stick(`
+    <circle cx="48" cy="34" r="11" fill="#FFE0B2" stroke="${P}" stroke-width="3"/>
+    <path d="M48 45 L48 60 L36 70 L36 82" stroke="${P}" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M48 60 L60 70 L60 82" stroke="${P}" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M48 50 L70 54 M48 50 L26 54" stroke="${ACC}" stroke-width="5" stroke-linecap="round"/>
+    <line x1="20" y1="86" x2="76" y2="86" stroke="#B9C7D4" stroke-width="3" stroke-linecap="round"/>`),
+  /* 跳跃：双脚离地，手上扬，弹跳线 */
+  jump: () => stick(`
+    <circle cx="48" cy="22" r="11" fill="#FFE0B2" stroke="${P}" stroke-width="3"/>
+    <path d="M48 33 L48 54" stroke="${P}" stroke-width="5" stroke-linecap="round"/>
+    <path d="M48 38 L68 26 M48 38 L28 26" stroke="${ACC}" stroke-width="5" stroke-linecap="round"/>
+    <path d="M48 54 L38 66 L34 60 M48 54 L58 66 L62 60" stroke="${P}" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M30 80 q6 -5 12 0 M54 80 q6 -5 12 0" stroke="#B9C7D4" stroke-width="3" fill="none" stroke-linecap="round"/>`),
+  /* 转圈：小人+环绕箭头 */
+  spin: () => stick(`
+    <circle cx="48" cy="30" r="10" fill="#FFE0B2" stroke="${P}" stroke-width="3"/>
+    <path d="M48 40 L48 62 M48 46 L60 52 M48 46 L36 52 M48 62 L40 78 M48 62 L56 78" stroke="${P}" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M20 48 a28 22 0 1 1 8 18" stroke="${ACC}" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+    <path d="M24 70 L28 64 L33 71 Z" fill="${ACC}"/>`),
+  /* 拍手：双手胸前合，放射线 */
+  clap: () => stick(`
+    <circle cx="48" cy="26" r="11" fill="#FFE0B2" stroke="${P}" stroke-width="3"/>
+    <path d="M48 37 L48 64 M48 64 L38 84 M48 64 L58 84" stroke="${P}" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M48 46 L58 52 M48 46 L38 52" stroke="${ACC}" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="48" cy="53" r="6" fill="${ACC}"/>
+    <path d="M60 44 l6 -5 M62 53 l8 0 M36 44 l-6 -5 M34 53 l-8 0" stroke="${ACC}" stroke-width="3" stroke-linecap="round"/>`),
+  /* 单脚站：一腿直立一腿弯抬，双臂平展 */
+  oneleg: () => stick(`
+    <circle cx="48" cy="24" r="11" fill="#FFE0B2" stroke="${P}" stroke-width="3"/>
+    <path d="M48 35 L48 60" stroke="${P}" stroke-width="5" stroke-linecap="round"/>
+    <path d="M48 42 L72 42 M48 42 L24 42" stroke="${ACC}" stroke-width="5" stroke-linecap="round"/>
+    <path d="M48 60 L48 84" stroke="${P}" stroke-width="5" stroke-linecap="round"/>
+    <path d="M48 60 L62 66 L62 56" stroke="${ACC}" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="26" y1="88" x2="70" y2="88" stroke="#B9C7D4" stroke-width="3" stroke-linecap="round"/>`),
+  /* 摸耳朵：一手弯至头侧，耳朵标橙 */
+  touchear: () => stick(`
+    <circle cx="48" cy="30" r="11" fill="#FFE0B2" stroke="${P}" stroke-width="3"/>
+    <circle cx="59" cy="30" r="3.5" fill="${ACC}"/>
+    <path d="M48 41 L48 66 M48 66 L38 86 M48 66 L58 86" stroke="${P}" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M48 48 L66 44 L62 32" stroke="${ACC}" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M48 50 L32 60" stroke="${P}" stroke-width="5" stroke-linecap="round"/>`),
+  /* 跺脚：一脚高抬猛踏，冲击线 */
+  stomp: () => stick(`
+    <circle cx="46" cy="24" r="11" fill="#FFE0B2" stroke="${P}" stroke-width="3"/>
+    <path d="M46 35 L46 58 M46 42 L60 50 M46 42 L32 50" stroke="${P}" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M46 58 L40 84" stroke="${P}" stroke-width="5" stroke-linecap="round"/>
+    <path d="M46 58 L62 62 L64 74" stroke="${ACC}" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M58 82 l4 6 M66 80 l1 7 M72 76 l6 5" stroke="${ACC}" stroke-width="3" stroke-linecap="round"/>
+    <line x1="20" y1="88" x2="54" y2="88" stroke="#B9C7D4" stroke-width="3" stroke-linecap="round"/>`),
+  /* 定住不动：立正 + 僵直强调框 */
+  freeze: () => stick(`
+    <rect x="14" y="6" width="68" height="84" rx="10" fill="none" stroke="${ACC}" stroke-width="3.5" stroke-dasharray="8 6"/>
+    <circle cx="48" cy="28" r="11" fill="#FFE0B2" stroke="${P}" stroke-width="3"/>
+    <path d="M48 39 L48 64 M48 46 L58 58 M48 46 L38 58 M48 64 L42 84 M48 64 L54 84" stroke="${P}" stroke-width="5" fill="none" stroke-linecap="round"/>`),
+  /* 拍腿：双手贴大腿侧，拍击线 */
+  patlegs: () => stick(`
+    <circle cx="48" cy="24" r="11" fill="#FFE0B2" stroke="${P}" stroke-width="3"/>
+    <path d="M48 35 L48 60 M48 60 L40 84 M48 60 L56 84" stroke="${P}" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M48 42 L60 58 M48 42 L36 58" stroke="${ACC}" stroke-width="5" stroke-linecap="round"/>
+    <path d="M62 62 l5 4 M34 62 l-5 4" stroke="${ACC}" stroke-width="3" stroke-linecap="round"/>`),
+  /* 举手：单手直冲天 */
+  raisehand: () => stick(`
+    <circle cx="48" cy="30" r="11" fill="#FFE0B2" stroke="${P}" stroke-width="3"/>
+    <path d="M48 41 L48 66 M48 66 L38 86 M48 66 L58 86 M48 48 L34 58" stroke="${P}" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M48 48 L62 30 L62 12" stroke="${ACC}" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="62" cy="10" r="4" fill="${ACC}"/>`),
+};

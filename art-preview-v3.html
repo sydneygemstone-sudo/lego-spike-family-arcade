@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8"><title>v3 新资产预览</title>
+<style>body{font-family:-apple-system,sans-serif;background:#FDF3DF;margin:20px}.card{background:#fff;border-radius:12px;padding:12px;margin-bottom:18px;box-shadow:0 2px 8px rgba(0,0,0,.08)}.card h4{margin:0 0 8px;font-size:13px;color:#555}</style>
+</head><body><div id="root"></div>
+<script type="module">
+import * as A from './assets/art.js';
+const root = document.getElementById('root');
+const add = (t, html, w) => { const c = document.createElement('div'); c.className='card'; c.innerHTML=`<h4>${t}</h4><div style="width:${w}px">${html}</div>`; root.appendChild(c); };
+add('clawMachineScene 8格', A.clawMachineScene({gridCount: 8}), 900);
+add('clawMachineScene 6格', A.clawMachineScene({gridCount: 6}), 720);
+add('tiles.portal 紫', A.tiles.portal(90), 100);
+add('tiles.portal 蓝', A.tiles.portal(90, 'blue'), 100);
+add('beltSceneColored 红蓝蓝×2', A.beltSceneColored({colors:['red','blue','blue','red','blue','blue']}), 780);
+add('roverSideWheeled 大轮', A.roverSideWheeled({wheelScale: 1.45}), 230);
+add('roverSideWheeled 小轮(对照)', A.roverSideWheeled({wheelScale: 1}), 230);
+</script></body></html>

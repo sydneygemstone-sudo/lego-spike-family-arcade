@@ -1,0 +1,11 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{background:#FDF3DF;display:flex;flex-wrap:wrap;gap:14px;padding:20px;font-family:sans-serif}.c{background:#fff;border-radius:10px;padding:10px;text-align:center;font-size:12px;color:#666}.c div{width:110px}</style></head><body>
+<script type="module">
+import { actionIcons } from './assets/art.js';
+const names = {squat:'蹲下',jump:'跳跃',spin:'转圈',clap:'拍手',oneleg:'单脚站',touchear:'摸耳朵',stomp:'跺脚',freeze:'定住',patlegs:'拍腿',raisehand:'举手'};
+for (const [k,fn] of Object.entries(actionIcons)) {
+  const c = document.createElement('div'); c.className='c';
+  c.innerHTML = `<div>${fn()}</div>${names[k]}(${k})`;
+  document.body.appendChild(c);
+}
+</script>
+</body></html>

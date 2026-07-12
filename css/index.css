@@ -19,11 +19,48 @@
 }
 .home-progress .progress-track { margin-top: var(--space-2); }
 
+/* 两大分区标题（屏幕编程 / 一起玩）——视觉区分：冷色中性 vs 暖橙色系头 */
+.home-category-block { margin-bottom: var(--space-5); }
+.category-heading {
+  display: inline-block;
+  padding: 6px 18px;
+  border-radius: 999px;
+  margin-bottom: var(--space-3);
+}
+.category-heading--screen {
+  color: var(--ink-700);
+  background: var(--paper-100);
+}
+.category-heading--family {
+  color: #fff;
+  background: linear-gradient(90deg, var(--lego-orange), var(--lego-orange-dark));
+}
+.home-family-tagline { margin: 0 0 var(--space-3); }
+
 .home-levels-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-5);
+}
+
+.home-family-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+}
+.family-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  color: var(--ink-900);
+  text-align: center;
+}
+.family-card-sub-label {
+  font-size: var(--font-small);
+  margin-top: -4px;
 }
 
 .level-card {
@@ -41,6 +78,30 @@
 }
 .level-card .star-rating { justify-content: center; }
 .level-card .star { font-size: 22px; }
+
+/* 每关卡片的 3 个 level × 3 星迷你进度（9 星总览） */
+.level-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+.level-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.level-progress-tag {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--ink-500);
+  width: 16px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.star-rating--mini { gap: 1px; }
+.star-rating--mini .star { font-size: 12px; }
 
 .home-flashcard-entry { margin-bottom: var(--space-5); }
 .flashcard-entry-card {

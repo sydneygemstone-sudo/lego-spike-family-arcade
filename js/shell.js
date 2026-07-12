@@ -1,11 +1,15 @@
 /* js/shell.js
  * 通用关卡容器——game.html 唯一的入口脚本。
- * 读取 ?g=<id>，动态 import('./games/<id>.js')，注入 api{complete,fail,sfx,mascot,store}，
- * 统一负责：顶部栏（返回/吉祥物/标题/当前星级）、结算弹窗（3 星动画+音效）、重试/返回首页。
+ * 读取 ?g=<id>&l=<1|2|3>，动态 import('./games/<id>.js')，注入 api{complete,fail,sfx,mascot,store,level}，
+ * 统一负责：顶部栏（返回/吉祥物/标题/当前 level 星级）、结算弹窗（3 星动画+音效+难度徽标+下一难度入口）、
+ * 重试/返回首页。
  *
  * 关卡模块协议（games/<id>.js）——支持两种导出形式，任选其一：
  *   export default { id, title, icon, init(container, api), destroy() }
  *   或直接具名导出同名字段（export const id/title/icon; export function init/destroy）
+ *
+ * level 向后兼容：URL 缺省 `l` 或非法值一律当作 1；游戏模块完全可以不读 api.level，
+ * 照样等价于跑 L1，不会报错（现有六关在下一波才会真正用到 api.level）。
  */
 
 import { sfx } from './sfx.js';
@@ -30,6 +34,14 @@ function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 function qs(sel, root = document) { return root.querySelector(sel); }
 
+// URL 的 &l= 归一化成 1|2|3，缺省/非法一律回退 1（不炸页面）。
+function parseLevel(params) {
+  const n = Number(params.get('l'));
+  return (n === 1 || n === 2 || n === 3) ? n : 1;
+}
+
+const LEVEL_LABEL = { 1: 'L1', 2: 'L2', 3: 'L3' };
+
 function buildSkeleton(root) {
   root.innerHTML = `
     <div class="game-page">
@@ -37,7 +49,10 @@ function buildSkeleton(root) {
         <button id="btn-home" class="brick-btn brick-btn--gray brick-btn--sm" aria-label="返回首页">← 首页</button>
         <div class="game-topbar-mascot" id="mascot-slot"></div>
         <div class="game-topbar-title">
-          <h1 id="game-title" class="title-md" style="margin:0;">加载中…</h1>
+          <div class="flex-row gap-2" style="align-items:center;">
+            <h1 id="game-title" class="title-md" style="margin:0;">加载中…</h1>
+            <span class="level-chip" id="level-chip"></span>
+          </div>
           <div class="star-rating star-rating--sm" id="current-stars"></div>
         </div>
       </header>
@@ -89,6 +104,7 @@ export async function startShell(root = document.getElementById('app')) {
   const params = new URLSearchParams(window.location.search);
   const raw = params.get('g') || '';
   const gameId = /^[a-zA-Z0-9_]+$/.test(raw) ? raw : null;
+  const level = parseLevel(params);
 
   const mascotSlot = qs('#mascot-slot', root);
   const mascot = createMascot(mascotSlot, { emotion: 'idle' });
@@ -109,8 +125,10 @@ export async function startShell(root = document.getElementById('app')) {
   const gameRoot = qs('#game-root', root);
   const titleEl = qs('#game-title', root);
   const currentStarsEl = qs('#current-stars', root);
+  const levelChipEl = qs('#level-chip', root);
 
-  renderStars(currentStarsEl, store.getStars(gameId), 'sm');
+  levelChipEl.textContent = LEVEL_LABEL[level];
+  renderStars(currentStarsEl, store.getStars(gameId, level), 'sm');
 
   let mod;
   try {
@@ -131,6 +149,7 @@ export async function startShell(root = document.getElementById('app')) {
       sfx,
       mascot,
       store,
+      level,
     };
   }
 
@@ -155,18 +174,20 @@ export async function startShell(root = document.getElementById('app')) {
 
   function onComplete(rawStars) {
     const stars = Math.max(0, Math.min(3, Math.round(rawStars)));
-    const result = store.setStars(gameId, stars);
+    const result = store.setStars(gameId, level, stars);
     renderStars(currentStarsEl, result.best, 'sm');
     showResultModal(stars, result);
   }
 
   function showResultModal(stars, result) {
     const modalRoot = qs('#modal-root', root);
+    const hasNextLevel = stars >= 1 && level < 3;
     modalRoot.innerHTML = `
       <div class="modal-overlay">
         <div class="modal-card">
           <div id="modal-mascot-slot" class="flex-center" style="margin-bottom:8px;"></div>
           <h2 class="title-lg">关卡完成！</h2>
+          <span class="level-chip level-chip--modal">${LEVEL_LABEL[level]}</span>
           <div class="star-rating" id="modal-stars">
             <span class="star" data-i="1">★</span>
             <span class="star" data-i="2">★</span>
@@ -175,6 +196,7 @@ export async function startShell(root = document.getElementById('app')) {
           <p class="text-muted" id="modal-msg" style="min-height:1.4em;"></p>
           <div id="modal-badge" class="flex-col gap-2" style="align-items:center; margin: 8px 0 4px;"></div>
           <div class="flex-row gap-3" style="justify-content:center; margin-top: 18px; flex-wrap: wrap;">
+            ${hasNextLevel ? `<button class="brick-btn brick-btn--green" id="btn-next-level">挑战下一难度 →</button>` : ''}
             <button class="brick-btn brick-btn--gray" id="btn-retry">重试</button>
             <button class="brick-btn brick-btn--yellow" id="btn-home2">返回首页</button>
           </div>
@@ -189,9 +211,11 @@ export async function startShell(root = document.getElementById('app')) {
 
     if (result.badgeUnlocked) {
       const badgeBox = qs('#modal-badge', modalRoot);
+      const badgeIcon = result.badgeTier === 'gold' ? '🌟' : '🏅';
+      const badgeLine = result.badgeTier === 'gold' ? '解锁金徽章！三个难度都拿满星啦！' : '解锁新徽章！';
       badgeBox.innerHTML = `
-        <div class="badge-hex" style="--badge-color: var(--cat-${result.badgeUnlocked}, var(--lego-yellow));">🏅</div>
-        <div class="title-sm">解锁新徽章！</div>
+        <div class="badge-hex${result.badgeTier === 'gold' ? ' badge-hex--gold' : ''}" style="--badge-color: var(--cat-${result.badgeUnlocked}, var(--lego-yellow));">${badgeIcon}</div>
+        <div class="title-sm">${badgeLine}</div>
       `;
     }
 
@@ -205,6 +229,15 @@ export async function startShell(root = document.getElementById('app')) {
         }
       }, 260 + i * 380);
     });
+
+    if (hasNextLevel) {
+      qs('#btn-next-level', modalRoot).addEventListener('click', () => {
+        if (typeof currentGame.destroy === 'function') {
+          try { currentGame.destroy(); } catch (e) { /* noop */ }
+        }
+        window.location.href = `game.html?g=${encodeURIComponent(gameId)}&l=${level + 1}`;
+      });
+    }
 
     qs('#btn-retry', modalRoot).addEventListener('click', () => {
       modalMascot.destroy();

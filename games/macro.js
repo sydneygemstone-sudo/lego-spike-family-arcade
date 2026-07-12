@@ -1,10 +1,18 @@
 /* games/macro.js
- * 口诀大师 —— 先定义一个 My Block（3-5 个动作 + 命名），再用它（+基础积木）拼出一条
- * 含重复片段的长路径。两个 blocks-ui 序列区：定义区 + 主程序区（合同 §6 支持多序列区）。
+ * 口诀大师 —— 先定义 My Block（3-5 个动作 + 命名），再用它（+基础积木）拼出一条
+ * 含重复片段的长路径。blocks-ui 序列区支持多个独立实例（合同 §6），L3 用两个定义槽。
  * 场景美术全部来自 assets/art.js：底部执行步道用 trackScene（无瓷砖简化版）+ roverTop
  * （俯视机器人，nested-svg 叠加 + CSS transform 补间走位/转向）。目标路径条本身是文字线索
- * 卡片（非场景美术），用纯 Unicode 箭头（非 emoji）标注方向，重复片段同色描边框分组。
+ * 卡片（非场景美术），用纯 Unicode 箭头（非 emoji）标注方向，统一平铺展示、不做重复片段
+ * 分组视觉提示——找规律是留给孩子自己琢磨的认知训练，不在题面上剧透答案。
  * 协议见 API.md：export default {id,title,icon,init,destroy}。
+ *
+ * v3 加 Level（games-v3-redesign §六）：
+ *   L1 现状（周期明显，unitLen 3-5 × 3-4 次 + 0-2 前后缀装饰）。
+ *   L2 更长序列（14-18 步）、周期固定 4、前后缀变成"干扰"（各 1-3 步，必现不再是装饰）。
+ *   L3 双宏：两个 My Block 定义槽（各自命名），目标路径含两种不同重复模式段交错
+ *      （AABB 段：motifA×2+motifB×2；CDC 段：motifA·motifB·motifA 交错），最优解需要两个
+ *      宏都用上。星级：双宏且卡数≤最优 3★ / 单宏或多卡 2★ / 完成 1★。
  */
 
 import { createTray, createSequence } from '../js/blocks-ui.js';
@@ -30,8 +38,13 @@ function pick(arr) { return arr[randInt(0, arr.length - 1)]; }
 function baseBlockDefs() {
   return ACTIONS.map((id) => ({ id, label: ACTION_META[id].label, icon: ACTION_META[id].icon, color: ACTION_META[id].color }));
 }
+function sameSeq(a, b) {
+  if (a.length !== b.length) return false;
+  return a.every((v, i) => v === b[i]);
+}
 
-function buildLevelPlan() {
+/* -------------------------------------------------------------------------- L1：现状 -------------------------------------------------------------------------- */
+function buildPlanL1() {
   const unitLen = randInt(3, 5);
   const unit = Array.from({ length: unitLen }, () => pick(ACTIONS));
   const repeatCount = randInt(3, 4);
@@ -48,7 +61,60 @@ function buildLevelPlan() {
   suffix.forEach((t) => target.push({ type: t, segment: 'suffix' }));
 
   const optimalCount = prefixLen + repeatCount + suffixLen;
-  return { target, optimalCount };
+  return { target, optimalCount, macroSlotCount: 1 };
+}
+
+/* -------------------------------------------------------------------------- L2：更长序列、周期固定 4、干扰前后缀 --------------------------------------------------------------------------
+ * 周期 4 单元重复 3 次（=12 步核心）+ 前后缀各 1-3 步干扰，总长恰好落在 14-18 步。 */
+function buildPlanL2() {
+  const unitLen = 4;
+  const unit = Array.from({ length: unitLen }, () => pick(ACTIONS));
+  const repeatCount = 3;
+  const prefixLen = randInt(1, 3);
+  const suffixLen = randInt(1, 3);
+  const prefix = Array.from({ length: prefixLen }, () => pick(ACTIONS));
+  const suffix = Array.from({ length: suffixLen }, () => pick(ACTIONS));
+
+  const target = [];
+  prefix.forEach((t) => target.push({ type: t, segment: 'prefix' }));
+  for (let k = 0; k < repeatCount; k++) {
+    unit.forEach((t) => target.push({ type: t, segment: 'repeat', groupIndex: k }));
+  }
+  suffix.forEach((t) => target.push({ type: t, segment: 'suffix' }));
+
+  const optimalCount = prefixLen + repeatCount + suffixLen;
+  return { target, optimalCount, macroSlotCount: 1 };
+}
+
+/* -------------------------------------------------------------------------- L3：双宏，两种模式段交错 --------------------------------------------------------------------------
+ * motifA/motifB 各 2-3 步、互不相同。
+ * 段一（"AABB"）：motifA ×2 + motifB ×2；段二（"CDC"）：motifA · motifB · motifA 交错。
+ * 最优解 = 定义两个 My Block（=motifA/motifB）分别用 2 次 + 2 次（段一）+ 1 次 + 1 次 + 1 次（段二）
+ * = 7 张宏卡，比逐步摆放（4|A|+3|B| 个基础块）省很多张。 */
+function buildPlanL3() {
+  function makeMotif() {
+    const len = randInt(2, 3);
+    return Array.from({ length: len }, () => pick(ACTIONS));
+  }
+  let motifA = makeMotif();
+  let motifB = makeMotif();
+  let guard = 0;
+  while (sameSeq(motifA, motifB) && guard < 12) { motifB = makeMotif(); guard++; }
+
+  const target = [];
+  const push = (arr, segment, groupIndex) => arr.forEach((t) => target.push({ type: t, segment, groupIndex }));
+  push(motifA, 'AABB', 0); push(motifA, 'AABB', 1);
+  push(motifB, 'AABB', 2); push(motifB, 'AABB', 3);
+  push(motifA, 'CDC', 0); push(motifB, 'CDC', 1); push(motifA, 'CDC', 2);
+
+  const optimalCount = 4 + 3; // 段一 4 张宏卡 + 段二 3 张宏卡（都用宏时的最省张数）
+  return { target, optimalCount, macroSlotCount: 2 };
+}
+
+function buildLevelPlan(level) {
+  if (level === 3) return buildPlanL3();
+  if (level === 2) return buildPlanL2();
+  return buildPlanL1();
 }
 
 /* -------------------------------------------------------------------------- 执行步道几何 --------------------------------------------------------------------------
@@ -83,10 +149,6 @@ function injectStylesOnce() {
     .macro-section--dim { opacity:.45; pointer-events:none; filter: grayscale(.4); }
     .macro-trail-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; padding: 6px 2px 10px; }
     .macro-trail { display:flex; align-items:center; gap:6px; width:max-content; padding: 4px 2px; }
-    .macro-repeat-group {
-      display:flex; gap:4px; padding:5px; margin:0 3px; border-radius:12px;
-      border:3px solid var(--cat-macro,#E0218A); background: rgba(224,33,138,.08);
-    }
     .macro-trail-cell {
       position:relative; width:36px; height:36px; border-radius:10px;
       display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800;
@@ -129,20 +191,44 @@ function wait(ms, timers) {
 function render(container, api) {
   let cancelled = false;
   const timers = [];
-  const plan = buildLevelPlan();
+  const plan = buildLevelPlan(api.level);
+  const macroSlotCount = plan.macroSlotCount; // 1（L1/L2）或 2（L3）
   const stageCellCount = plan.target.length + 1;
-  let macroDef = null; // {name, icon, actions:[type,...]}
-  let defineTray = null;
-  let defineSeq = null;
+  const macroDefs = new Array(macroSlotCount).fill(null); // 每槽 {name, icon, actions:[type,...]} | null
+  const defineSeqs = new Array(macroSlotCount).fill(null);
   let mainTray = null;
   let mainSeq = null;
   let running = false;
   let stageIndex = 0;
   let stageTurnDeg = 0;
 
+  // 单宏（L1/L2）沿用原文案；双宏（L3）每槽独立标题+更短的动作数范围（2-5，比单宏 3-5 略宽松，
+  // 方便孩子先试短一点的 motif）。
+  const defMinLen = macroSlotCount > 1 ? 2 : 3;
+  const defMaxLen = 5;
+
+  const defineCardsHTML = Array.from({ length: macroSlotCount }, (_, i) => {
+    const label = macroSlotCount > 1
+      ? `① 定义 My Block ${i === 0 ? 'A' : 'B'}（拖 ${defMinLen}-${defMaxLen} 个动作）`
+      : '① 拖 3-5 个动作，定义你的 My Block';
+    const hideInitially = macroSlotCount > 1 && i > 0;
+    return `
+    <div class="brick-card brick-card--pink macro-section" id="macro-define-card-${i}"${hideInitially ? ' style="display:none;"' : ''}>
+      <p class="title-sm" style="margin:0;">${label}</p>
+      <div id="macro-define-tray-${i}"></div>
+      <div id="macro-define-seq-${i}"></div>
+      <button class="brick-btn brick-btn--purple" id="macro-confirm-btn-${i}" disabled>✅ 确认宏</button>
+      <div class="macro-name-picker" id="macro-name-picker-${i}" style="display:none;"></div>
+      <div class="macro-def-summary" id="macro-def-summary-${i}" style="display:none; margin-top:10px;"></div>
+    </div>`;
+  }).join('');
+
+  const mainStepLabel = macroSlotCount > 1 ? '③' : '②';
+  const mainHideInitially = macroSlotCount > 1; // 双宏：主程序区先整块隐藏，省垂直空间，等两个宏都定义完再出现
+
   container.innerHTML = `
     <div class="brick-card brick-card--cat-macro macro-section">
-      <p class="title-sm" style="margin:0 0 8px;">🔍 找一找重复的一组！</p>
+      <p class="title-sm" style="margin:0 0 8px;">🔍 仔细看这条路径，藏着什么规律？</p>
       <div class="macro-trail-wrap"><div class="macro-trail" id="macro-target-trail"></div></div>
     </div>
 
@@ -151,17 +237,10 @@ function render(container, api) {
       <div class="macro-stage" id="macro-stage-box"></div>
     </div>
 
-    <div class="brick-card brick-card--pink macro-section" id="macro-define-card">
-      <p class="title-sm" style="margin:0;">① 拖 3-5 个动作，定义你的 My Block</p>
-      <div id="macro-define-tray"></div>
-      <div id="macro-define-seq"></div>
-      <button class="brick-btn brick-btn--purple" id="macro-confirm-btn" disabled>✅ 确认宏</button>
-      <div class="macro-name-picker" id="macro-name-picker" style="display:none;"></div>
-      <div class="macro-def-summary" id="macro-def-summary" style="display:none; margin-top:10px;"></div>
-    </div>
+    ${defineCardsHTML}
 
-    <div class="brick-card brick-card--cat-macro macro-section macro-section--dim" id="macro-main-card">
-      <p class="title-sm" style="margin:0;">② 用积木铺路，闯关！（善用 My Block 能少摆很多张卡）</p>
+    <div class="brick-card brick-card--cat-macro macro-section${mainHideInitially ? '' : ' macro-section--dim'}" id="macro-main-card"${mainHideInitially ? ' style="display:none;"' : ''}>
+      <p class="title-sm" style="margin:0;">${mainStepLabel} 用积木铺路，闯关！（善用 My Block 能少摆很多张卡）</p>
       <div id="macro-main-tray"></div>
       <div id="macro-main-seq"></div>
       <div class="macro-expand-stage" id="macro-expand-stage" style="display:none;"></div>
@@ -174,14 +253,14 @@ function render(container, api) {
 
   const stageBox = container.querySelector('#macro-stage-box');
   const targetTrailEl = container.querySelector('#macro-target-trail');
-  const defineCard = container.querySelector('#macro-define-card');
-  const confirmBtn = container.querySelector('#macro-confirm-btn');
-  const namePicker = container.querySelector('#macro-name-picker');
-  const defSummary = container.querySelector('#macro-def-summary');
   const mainCard = container.querySelector('#macro-main-card');
   const expandStage = container.querySelector('#macro-expand-stage');
   const runBtn = container.querySelector('#macro-run-btn');
   const clearBtn = container.querySelector('#macro-clear-btn');
+
+  const confirmBtns = Array.from({ length: macroSlotCount }, (_, i) => container.querySelector(`#macro-confirm-btn-${i}`));
+  const namePickers = Array.from({ length: macroSlotCount }, (_, i) => container.querySelector(`#macro-name-picker-${i}`));
+  const defSummaries = Array.from({ length: macroSlotCount }, (_, i) => container.querySelector(`#macro-def-summary-${i}`));
 
   // ---- 执行步道（场景）----
   stageBox.innerHTML = buildStageMarkup(stageCellCount);
@@ -204,119 +283,140 @@ function render(container, api) {
   }
   resetStage();
 
-  // ---- 目标路径展示（重复片段同色描边框分组）----
+  // ---- 目标路径展示（统一平铺，不做重复片段分组提示——找规律留给孩子自己琢磨）----
   function cellHTML(item, idx) {
     return `<div class="macro-trail-cell" data-i="${idx}">${TRAIL_ICON[item.type]}</div>`;
   }
   function renderTargetTrail() {
-    const html = [];
-    let i = 0;
-    while (i < plan.target.length) {
-      const item = plan.target[i];
-      if (item.segment === 'repeat') {
-        const gIdx = item.groupIndex;
-        const startI = i;
-        const groupCells = [];
-        while (i < plan.target.length && plan.target[i].segment === 'repeat' && plan.target[i].groupIndex === gIdx) {
-          groupCells.push(plan.target[i]);
-          i += 1;
-        }
-        html.push(`<div class="macro-repeat-group">${groupCells.map((c, ci) => cellHTML(c, startI + ci)).join('')}</div>`);
-      } else {
-        html.push(cellHTML(item, i));
-        i += 1;
-      }
-    }
-    targetTrailEl.innerHTML = html.join('');
+    targetTrailEl.innerHTML = plan.target.map((item, idx) => cellHTML(item, idx)).join('');
   }
   renderTargetTrail();
 
-  // ---- 阶段①：定义 My Block ----
-  defineTray = createTray(container.querySelector('#macro-define-tray'), baseBlockDefs());
-  defineSeq = createSequence(container.querySelector('#macro-define-seq'), { maxSlots: 5, emptyText: '把动作积木拖到这里，摆 3-5 个 →' });
-  defineSeq.onChange((list) => {
-    confirmBtn.disabled = !(list.length >= 3 && list.length <= 5);
-  });
+  // ---- 阶段①：定义 My Block（1 或 2 个槽，槽 i+1 要等槽 i 确认完才出现）----
+  // 注意：createSequence 的"轻点也能加入"兜底会把块加进"最近一次创建的 createSequence 实例"
+  // （合同 §6），所以这里不能像最初写法那样把两个槽的 createTray/createSequence 一次性建完——
+  // 那样后建的槽 1 会一直是"最近创建"的那个，槽 0 还在用的时候轻点反而会加到隐藏的槽 1 里。
+  // 改成按需懒建：每个槽在真正变成"当前活跃步骤"时才 createTray/createSequence，同一时刻
+  // "最近创建的序列"永远就是玩家正在填的那个槽，轻点兜底才会指哪打哪。
+  function setupDefineSlot(i) {
+    if (defineSeqs[i]) return; // 已建过（比如"重新定义"复用同一个槽），不重复 createSequence
+    createTray(container.querySelector(`#macro-define-tray-${i}`), baseBlockDefs());
+    const defSeq = createSequence(container.querySelector(`#macro-define-seq-${i}`), {
+      maxSlots: defMaxLen,
+      emptyText: `把动作积木拖到这里，摆 ${defMinLen}-${defMaxLen} 个 →`,
+    });
+    defineSeqs[i] = defSeq;
+    defSeq.onChange((list) => {
+      confirmBtns[i].disabled = !(list.length >= defMinLen && list.length <= defMaxLen);
+    });
+  }
+  setupDefineSlot(0);
 
   // 测试专用只读钩子（同 games/hunt.js 的约定）：仅在 window.__LSFA_TEST__ 显式为 true 时挂载，
-  // 生产环境不受影响。暴露目标路径 plan 与两个序列区 handle，供自动化脚本跳过真实拖拽直接
+  // 生产环境不受影响。暴露目标路径 plan 与各定义槽序列 handle，供自动化脚本跳过真实拖拽直接
   // 调用 addBlock/setSequence 驱动关卡。
   if (typeof window !== 'undefined' && window.__LSFA_TEST__) {
-    window.__lsfaMacro = { plan, defineSeq };
+    window.__lsfaMacro = { plan, macroSlotCount, defineSeqs, macroDefs };
   }
 
-  confirmBtn.addEventListener('click', () => {
-    if (confirmBtn.disabled) return;
+  function openNameStep(i) {
+    if (confirmBtns[i].disabled) return;
     api.sfx.click();
-    namePicker.style.display = 'flex';
-    namePicker.innerHTML = MACRO_NAME_PRESETS.map((p, i) => `
-      <button class="brick-btn brick-btn--yellow macro-name-btn" data-i="${i}">
+    const usedNames = macroDefs.filter(Boolean).map((d) => d.name);
+    const available = MACRO_NAME_PRESETS.filter((p) => !usedNames.includes(p.name));
+    const presets = available.length ? available : MACRO_NAME_PRESETS;
+    namePickers[i].style.display = 'flex';
+    namePickers[i].innerHTML = presets.map((p) => `
+      <button class="brick-btn brick-btn--yellow macro-name-btn" data-name="${p.name}" data-icon="${p.icon}">
         <span class="n-icon">${p.icon}</span><span>${p.name}</span>
       </button>
     `).join('');
-    confirmBtn.disabled = true;
-    namePicker.querySelectorAll('.macro-name-btn').forEach((btn) => {
+    confirmBtns[i].disabled = true;
+    namePickers[i].querySelectorAll('.macro-name-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const preset = MACRO_NAME_PRESETS[Number(btn.dataset.i)];
-        finalizeMacro(preset);
+        finalizeMacroSlot(i, { name: btn.dataset.name, icon: btn.dataset.icon });
       });
     });
     api.mascot.say('给它取个名字吧！', 'happy');
-  });
-
-  function finalizeMacro(preset) {
-    const seqSnapshot = defineSeq.getSequence();
-    macroDef = { name: preset.name, icon: preset.icon, actions: seqSnapshot.map((b) => b.type) };
-    api.sfx.success();
-    namePicker.style.display = 'none';
-    defSummary.style.display = 'flex';
-    defSummary.innerHTML = `
-      <div class="badge-hex" style="--badge-color: var(--cat-macro);">${macroDef.icon}</div>
-      <div>
-        <div class="title-sm">${macroDef.name}</div>
-        <div class="macro-def-actions">${macroDef.actions.map((t) => ACTION_META[t].icon).join('')}</div>
-      </div>
-      <button class="brick-btn brick-btn--gray brick-btn--sm" id="macro-redefine-btn">🔄 重新定义</button>
-    `;
-    container.querySelector('#macro-redefine-btn').addEventListener('click', resetToDefinePhase);
-
-    // 定义区变成只读展示
-    container.querySelector('#macro-define-tray').style.display = 'none';
-    container.querySelector('#macro-define-seq').style.display = 'none';
-    confirmBtn.style.display = 'none';
-
-    mainCard.classList.remove('macro-section--dim');
-    setupMainPhase();
-    api.mascot.say('太棒了！现在用它去闯关吧！', 'cheer');
   }
 
-  function resetToDefinePhase() {
-    api.sfx.click();
-    macroDef = null;
+  confirmBtns.forEach((btn, i) => btn.addEventListener('click', () => openNameStep(i)));
+
+  function finalizeMacroSlot(i, preset) {
+    const seqSnapshot = defineSeqs[i].getSequence();
+    macroDefs[i] = { name: preset.name, icon: preset.icon, actions: seqSnapshot.map((b) => b.type) };
+    api.sfx.success();
+    namePickers[i].style.display = 'none';
+    defSummaries[i].style.display = 'flex';
+    defSummaries[i].innerHTML = `
+      <div class="badge-hex" style="--badge-color: var(--cat-macro);">${macroDefs[i].icon}</div>
+      <div>
+        <div class="title-sm">${macroDefs[i].name}</div>
+        <div class="macro-def-actions">${macroDefs[i].actions.map((t) => ACTION_META[t].icon).join('')}</div>
+      </div>
+      <button class="brick-btn brick-btn--gray brick-btn--sm" id="macro-redefine-btn-${i}">🔄 重新定义</button>
+    `;
+    container.querySelector(`#macro-redefine-btn-${i}`).addEventListener('click', () => resetDefineSlot(i));
+
+    // 该槽的定义区变成只读展示
+    container.querySelector(`#macro-define-tray-${i}`).style.display = 'none';
+    container.querySelector(`#macro-define-seq-${i}`).style.display = 'none';
+    confirmBtns[i].style.display = 'none';
+
+    const nextUnconfirmed = macroDefs.findIndex((d) => d === null);
+    if (nextUnconfirmed === -1) {
+      // 所有槽都确认完了——解锁主程序阶段
+      if (mainHideInitially) mainCard.style.display = '';
+      mainCard.classList.remove('macro-section--dim');
+      setupMainPhase();
+      api.mascot.say(macroSlotCount > 1 ? '两个 My Block 都准备好了，去闯关吧！' : '太棒了！现在用它去闯关吧！', 'cheer');
+    } else {
+      const nextCard = container.querySelector(`#macro-define-card-${nextUnconfirmed}`);
+      if (nextCard) nextCard.style.display = '';
+      setupDefineSlot(nextUnconfirmed); // 懒建下一个槽的 tray/sequence，让它成为"最近创建"以接住轻点兜底
+      api.mascot.say('太棒了！再定义下一个 My Block 吧！', 'happy');
+    }
+  }
+
+  function resetMainPhase() {
     if (mainSeq) { mainSeq.destroy(); mainSeq = null; }
-    mainCard.classList.add('macro-section--dim');
     container.querySelector('#macro-main-tray').innerHTML = '';
     container.querySelector('#macro-main-seq').innerHTML = '';
     runBtn.disabled = true;
     expandStage.style.display = 'none';
     resetStage();
+    if (mainHideInitially) mainCard.style.display = 'none';
+    mainCard.classList.add('macro-section--dim');
+  }
 
-    container.querySelector('#macro-define-tray').style.display = '';
-    container.querySelector('#macro-define-seq').style.display = '';
-    confirmBtn.style.display = '';
-    confirmBtn.disabled = true;
-    defSummary.style.display = 'none';
-    defineSeq.clear();
+  function resetDefineSlot(i) {
+    api.sfx.click();
+    macroDefs[i] = null;
+    defSummaries[i].style.display = 'none';
+    container.querySelector(`#macro-define-tray-${i}`).style.display = '';
+    container.querySelector(`#macro-define-seq-${i}`).style.display = '';
+    confirmBtns[i].style.display = '';
+    confirmBtns[i].disabled = true;
+    // 重建（而不是复用）这个槽的 tray/sequence：如果槽 1 或主程序区后来居上创建过，
+    // "最近创建的序列"就不再是这个槽了，轻点兜底会指错地方。销毁重建让它重新变成"最近创建"。
+    defineSeqs[i].destroy();
+    defineSeqs[i] = null;
+    container.querySelector(`#macro-define-tray-${i}`).innerHTML = '';
+    container.querySelector(`#macro-define-seq-${i}`).innerHTML = '';
+    setupDefineSlot(i);
+    // 主程序阶段依赖全部宏定义，任一宏重新定义都要清空主程序、重新锁定（其余槽保持已确认状态不变）。
+    resetMainPhase();
     api.mascot.say('重新拖几个动作定义 My Block 吧！', 'idle');
   }
 
-  // ---- 阶段②：主程序 ----
+  // ---- 阶段②/③：主程序 ----
   function setupMainPhase() {
     const trayEl = container.querySelector('#macro-main-tray');
     const seqEl = container.querySelector('#macro-main-seq');
     trayEl.innerHTML = '';
     seqEl.innerHTML = '';
-    const defs = [...baseBlockDefs(), { id: 'myblock', label: macroDef.name, icon: macroDef.icon, color: 'pink' }];
+    const macroTileDefs = macroDefs.map((def, i) => ({ id: `myblock${i}`, label: def.name, icon: def.icon, color: 'pink' }));
+    const defs = [...baseBlockDefs(), ...macroTileDefs];
     mainTray = createTray(trayEl, defs);
     mainSeq = createSequence(seqEl, { maxSlots: 30, emptyText: '拼出完整路径吧（可以用 My Block 省很多张卡）→' });
     mainSeq.onChange((list) => {
@@ -325,14 +425,20 @@ function render(container, api) {
 
     if (typeof window !== 'undefined' && window.__LSFA_TEST__ && window.__lsfaMacro) {
       window.__lsfaMacro.mainSeq = mainSeq;
-      window.__lsfaMacro.macroDef = macroDef;
+      window.__lsfaMacro.macroDefs = macroDefs;
     }
+  }
+
+  function macroSlotOf(type) {
+    const m = /^myblock(\d+)$/.exec(type);
+    return m ? Number(m[1]) : -1;
   }
 
   function expandSequence(list) {
     const flat = [];
     list.forEach((item) => {
-      if (item.type === 'myblock' && macroDef) flat.push(...macroDef.actions);
+      const slot = macroSlotOf(item.type);
+      if (slot >= 0 && macroDefs[slot]) flat.push(...macroDefs[slot].actions);
       else flat.push(item.type);
     });
     return flat;
@@ -394,17 +500,19 @@ function render(container, api) {
     const mainSeqEl = container.querySelector('#macro-main-seq');
     for (const item of list) {
       if (cancelled) return;
-      if (item.type === 'myblock') {
+      const slot = macroSlotOf(item.type);
+      if (slot >= 0 && macroDefs[slot]) {
+        const def = macroDefs[slot];
         const tile = mainSeqEl.querySelector(`[data-uid="${item.uid}"]`);
         if (tile) tile.classList.add('brick-block--flip');
         expandStage.style.display = 'flex';
-        expandStage.innerHTML = `<strong>${macroDef.icon} ${macroDef.name} 展开：</strong>` +
-          macroDef.actions.map((t) => `<span class="exp-icon">${ACTION_META[t].icon}</span>`).join('');
+        expandStage.innerHTML = `<strong>${def.icon} ${def.name} 展开：</strong>` +
+          def.actions.map((t) => `<span class="exp-icon">${ACTION_META[t].icon}</span>`).join('');
         const expIcons = Array.from(expandStage.querySelectorAll('.exp-icon'));
-        for (let i = 0; i < macroDef.actions.length; i++) {
+        for (let i = 0; i < def.actions.length; i++) {
           if (cancelled) return;
           expIcons[i].classList.add('exp-icon--lit');
-          await highlightOne(macroDef.actions[i]);
+          await highlightOne(def.actions[i]);
           if (cancelled) return;
         }
         await wait(260, timers);
@@ -420,10 +528,18 @@ function render(container, api) {
     await wait(300, timers);
     if (cancelled) return;
 
-    const usedMacro = list.some((it) => it.type === 'myblock');
     const usedCount = list.length;
     const diff = usedCount - plan.optimalCount;
-    const stars = usedMacro && diff <= 0 ? 3 : diff <= 3 ? 2 : 1;
+    let stars;
+    if (macroSlotCount > 1) {
+      const usedFlags = macroDefs.map((_, i) => list.some((it) => it.type === `myblock${i}`));
+      const usedBoth = usedFlags.every(Boolean);
+      const usedAny = usedFlags.some(Boolean);
+      stars = usedBoth && usedCount <= plan.optimalCount ? 3 : usedAny ? 2 : 1;
+    } else {
+      const usedMacro = list.some((it) => it.type === 'myblock0');
+      stars = usedMacro && diff <= 0 ? 3 : diff <= 3 ? 2 : 1;
+    }
 
     api.mascot.say('闯关成功！', 'cheer');
     api.complete(stars);
@@ -439,13 +555,16 @@ function render(container, api) {
     cells.forEach((c) => c.classList.remove('macro-trail-cell--done', 'macro-trail-cell--active', 'macro-trail-cell--bad'));
   });
 
-  api.mascot.say('先看看目标路径有没有重复的一组，再定义 My Block 吧！', 'idle', 4500);
+  const introMsg = macroSlotCount > 1
+    ? '仔细看这条路径，藏着两种不同的重复规律！自己琢磨出来，分别定义两个 My Block 吧！'
+    : '仔细看这条路径，有没有藏着重复的规律？自己琢磨出来再定义你的 My Block！';
+  api.mascot.say(introMsg, 'idle', 4500);
 
   return {
     destroy() {
       cancelled = true;
       timers.forEach((t) => clearTimeout(t));
-      if (defineSeq) defineSeq.destroy();
+      defineSeqs.forEach((s) => { if (s) s.destroy(); });
       if (mainSeq) mainSeq.destroy();
     },
   };

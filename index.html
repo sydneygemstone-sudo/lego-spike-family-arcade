@@ -22,12 +22,21 @@
   <section class="brick-card brick-card--yellow home-progress">
     <div class="flex-between">
       <span class="title-sm">总进度</span>
-      <span class="title-sm" id="progress-label">0 / 18 ★</span>
+      <span class="title-sm" id="progress-label">0 / 54 ★</span>
     </div>
     <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
   </section>
 
-  <section class="home-levels-grid" id="levels-grid"></section>
+  <section class="home-category-block">
+    <h2 class="title-lg category-heading category-heading--screen">🖥️ 屏幕编程</h2>
+    <div class="home-levels-grid" id="levels-grid"></div>
+  </section>
+
+  <section class="home-category-block home-family-block">
+    <h2 class="title-lg category-heading category-heading--family">🎉 一起玩（全家真人游戏）</h2>
+    <p class="text-muted home-family-tagline">放下屏幕，全家一起动起来！iPad 当主持人，出题目、打节拍、翻答案。</p>
+    <div class="home-family-grid" id="family-grid"></div>
+  </section>
 
   <section class="home-flashcard-entry">
     <a href="flashcards.html" class="brick-card brick-card--purple brick-card--interactive tap-target flashcard-entry-card">
@@ -68,26 +77,62 @@ const BADGES = [
   { id: 'quiz', icon: '🗂️', label: '闪卡大师', cat: 'macro' },
 ];
 
-function starsMarkup(n) {
-  let s = '<div class="star-rating">';
+// 「一起玩」真人互动游戏——不计星/无 level，家庭真人打卡走独立的 localStorage
+// key（js/family-shell.js 里的 lsfa_family_v1），这里只负责渲染入口卡片。
+const FAMILY_GAMES = [
+  { id: 'humanrobot', title: '人体机器人', icon: '🤖', sub: '你说我做，精确指令传达' },
+  { id: 'livinghunt', title: '客厅寻宝', icon: '🧭', sub: '真人版寻宝，工作记忆预演' },
+  { id: 'rhythm', title: '节奏程序', icon: '🥁', sub: '跟拍循环，越跑越快' },
+  { id: 'macrospell', title: '口令宏', icon: '🔮', sub: '定义宏、混合播报' },
+  { id: 'ifthen', title: '如果就', icon: '🚦', sub: '条件反射，抑制控制' },
+  { id: 'humanbelt', title: '人体传送带', icon: '🎒', sub: '循环计数，心算记忆' },
+];
+
+function miniStarsMarkup(n) {
+  let s = '<div class="star-rating star-rating--mini">';
   for (let i = 1; i <= 3; i++) {
     s += `<span class="star${i <= n ? ' star--filled' : ''}">★</span>`;
   }
   return s + '</div>';
 }
 
+// 已通 L1 解锁 L2、已通 L2 解锁 L3；点卡片直接跳去玩家当前能玩的最高难度。
+function highestUnlockedLevel(lv) {
+  let highest = 1;
+  if (lv.l1 >= 1) highest = 2;
+  if (lv.l2 >= 1) highest = 3;
+  return highest;
+}
+
 function renderLevels() {
   const grid = document.getElementById('levels-grid');
+  const allStars = store.getAllStars();
   grid.innerHTML = LEVELS.map((lvl) => {
-    const stars = store.getStars(lvl.id);
+    const lv = allStars[lvl.id] || { l1: 0, l2: 0, l3: 0 };
+    const target = highestUnlockedLevel(lv);
     return `
-      <a href="game.html?g=${lvl.id}" class="brick-card brick-card--interactive brick-card--cat-${lvl.cat} level-card tap-target" data-level="${lvl.id}">
+      <a href="game.html?g=${lvl.id}&l=${target}" class="brick-card brick-card--interactive brick-card--cat-${lvl.cat} level-card tap-target" data-level="${lvl.id}">
         <div class="level-card-icon">${lvl.icon}</div>
         <div class="title-md">${lvl.title}</div>
-        ${starsMarkup(stars)}
+        <div class="level-progress">
+          <div class="level-progress-row"><span class="level-progress-tag">L1</span>${miniStarsMarkup(lv.l1)}</div>
+          <div class="level-progress-row"><span class="level-progress-tag">L2</span>${miniStarsMarkup(lv.l2)}</div>
+          <div class="level-progress-row"><span class="level-progress-tag">L3</span>${miniStarsMarkup(lv.l3)}</div>
+        </div>
       </a>
     `;
   }).join('');
+}
+
+function renderFamilyGrid() {
+  const grid = document.getElementById('family-grid');
+  grid.innerHTML = FAMILY_GAMES.map((g) => `
+    <a href="family.html?f=${g.id}" class="brick-card brick-card--orange brick-card--interactive family-card tap-target" data-family="${g.id}">
+      <div class="level-card-icon">${g.icon}</div>
+      <div class="title-md">${g.title}</div>
+      <div class="text-muted family-card-sub-label">${g.sub}</div>
+    </a>
+  `).join('');
 }
 
 function renderBadges() {
@@ -95,10 +140,14 @@ function renderBadges() {
   const unlocked = store.getBadges();
   row.innerHTML = BADGES.map((b) => {
     const isUnlocked = unlocked.includes(b.id);
+    const tier = store.getBadgeTier(b.id);
+    const cls = ['badge-hex'];
+    if (!isUnlocked) cls.push('badge-hex--locked');
+    if (tier === 'gold') cls.push('badge-hex--gold');
     return `
       <div class="badge-item">
-        <div class="badge-hex${isUnlocked ? '' : ' badge-hex--locked'}" style="--badge-color: var(--cat-${b.cat});">
-          ${isUnlocked ? b.icon : '❔'}
+        <div class="${cls.join(' ')}" style="--badge-color: var(--cat-${b.cat});">
+          ${isUnlocked ? (tier === 'gold' ? '🌟' : b.icon) : '❔'}
         </div>
         <div class="badge-item-label">${b.label}</div>
       </div>
@@ -120,6 +169,7 @@ function greetingLine(total, max) {
 }
 
 renderLevels();
+renderFamilyGrid();
 renderBadges();
 renderProgress();
 
