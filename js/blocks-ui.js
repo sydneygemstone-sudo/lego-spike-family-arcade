@@ -450,7 +450,25 @@ function onDragMove(ev) {
 
 function onDragEnd(ev) {
   if (!drag || ev.pointerId !== drag.pointerId) return;
-  if (!drag.dragStarted) { cleanupDrag(); return; }
+  if (!drag.dragStarted) {
+    // 轻点兜底交互（API.md §6）：托盘积木轻点（未越过 DRAG_THRESHOLD、也未触发长按）
+    // 直接加进"最近一次创建且仍挂在 DOM 里"的序列实例（defaultSequence）。
+    // seq 内已有积木的轻点行为保持原样（不做任何事——长按删除走独立的 longPressTimer 分支）。
+    if (drag.kind === 'tray' && defaultSequence) {
+      if (defaultSequence.isFull()) {
+        sfx.fail();
+      } else {
+        defaultSequence.addBlock(drag.def);
+        sfx.snap();
+        const list = defaultSequence.getSequence();
+        const lastUid = list.length ? list[list.length - 1].uid : null;
+        const landed = lastUid ? defaultSequence.el.querySelector(`[data-uid="${lastUid}"]`) : null;
+        if (landed) landed.classList.add('brick-block--landed');
+      }
+    }
+    cleanupDrag();
+    return;
+  }
 
   const target = drag.pendingTarget;
   const idx = drag.pendingIndex;
