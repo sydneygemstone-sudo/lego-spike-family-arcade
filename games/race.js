@@ -271,6 +271,31 @@ function injectStylesOnce() {
     .race-tray-chip--armed { box-shadow: 0 0 0 3px #fff, 0 0 14px 4px rgba(255,213,79,.9); }
 
     .race-ghost { position:fixed; z-index:600; pointer-events:none; opacity:.95; transform: scale(1.12); }
+
+    /* 竖屏（768×1024 等）：机关轨道内容天生偏短，game-root 的 safe center 会把内容整体
+     * 推到视口中间、顶部空出一大截。这里改成布局自己撑开留白（三段用更松的 gap + 场景卡
+     * 顶部多留一点呼吸感），配合 init() 里把 container 的 justify-content 改成 flex-start
+     * （见下方 init），让内容从顶部开始排布、多余空间自然沉淀到底部，不再"头轻脚重"。 */
+    .race-layout { display:flex; flex-direction:column; gap:36px; }
+    .race-stage-card { padding-top: 32px; }
+    .race-run-row { padding: 8px 0 28px; }
+
+    /* 横屏短视口（如 1024×768）：竖排会挤不下（场景+仓库+运行按钮三段叠加超出 768 高），
+     * 改成场景左 · 仓库/运行按钮右两栏，参照 games/claw.js 同一断点的做法。 */
+    .race-controls { display:flex; flex-direction:column; gap:26px; }
+    @media (min-width: 700px) and (max-height: 840px) {
+      .race-layout { flex-direction: row; align-items: stretch; gap:14px; }
+      .race-stage-card { flex: 1.3 1 0; min-width:0; padding-top:14px; display:flex; flex-direction:column; }
+      .race-scene-outer { flex:1 1 auto; max-height:none; height:auto; min-height:0; }
+      .race-controls { flex: 1 1 0; min-width:0; justify-content:center; gap:10px; }
+      .race-run-row { padding: 0; }
+      .race-tray-card.brick-card { padding: 14px 12px 8px; }
+      .race-tray { gap:6px; padding:2px 0; }
+      .race-tray-chip { min-width:64px; min-height:52px; padding:5px 8px; font-size:10.5px; }
+      .race-tray-chip .chip-icon { font-size:15px; }
+      .race-block-chip .chip-icon { font-size:15px; }
+      .race-run-row .brick-btn--lg { min-height:48px; padding:10px 20px; font-size:14px; }
+    }
   `;
   document.head.appendChild(style);
 }
@@ -295,7 +320,7 @@ function xPercent(index) { return pct(trackCellX(index), trackWidth(level.length
  * ------------------------------------------------------------------------- */
 function buildDOM(container) {
   container.innerHTML = `
-    <div class="flex-col gap-3">
+    <div class="race-layout">
       <div class="brick-card brick-card--cat-race race-stage-card">
         <div class="flex-between flex-wrap gap-2" style="margin-bottom:2px;">
           <h2 class="title-md" style="margin:0;">🏁 机关轨道</h2>
@@ -305,15 +330,17 @@ function buildDOM(container) {
           <div class="race-scene-inner" id="race-scene-inner"></div>
         </div>
       </div>
-      <div class="brick-card brick-card--blue race-tray-card">
-        <div class="flex-between flex-wrap gap-2" style="margin-bottom:4px;">
-          <div class="title-sm">积木仓库（数量有限，用完就没啦）</div>
-          <div class="text-muted" style="font-size:11.5px;">落空格=停机 · 落目标=胜利 · &gt;15步=打转</div>
+      <div class="race-controls">
+        <div class="brick-card brick-card--blue race-tray-card">
+          <div class="flex-between flex-wrap gap-2" style="margin-bottom:4px;">
+            <div class="title-sm">积木仓库（数量有限，用完就没啦）</div>
+            <div class="text-muted" style="font-size:11.5px;">落空格=停机 · 落目标=胜利 · &gt;15步=打转</div>
+          </div>
+          <div class="race-tray" id="race-tray"></div>
         </div>
-        <div class="race-tray" id="race-tray"></div>
-      </div>
-      <div class="flex-center">
-        <button id="race-run-btn" class="brick-btn brick-btn--green brick-btn--lg">▶ 运行程序</button>
+        <div class="flex-center race-run-row">
+          <button id="race-run-btn" class="brick-btn brick-btn--green brick-btn--lg">▶ 运行程序</button>
+        </div>
       </div>
     </div>
   `;
@@ -798,6 +825,13 @@ export default {
     containerRef = container;
     armed = null;
     drag = null;
+
+    // container 就是 shell.js 里的 #game-root 本身（css/game.css 给它 justify-content:safe
+    // center，专门照顾"内容变矮的关卡在纵向宽高比视口里顶部空一大截"——但这一关恰恰就是那个
+    // "内容变矮"的关卡本身，center 反而会把三段卡片整体推到视口中间，顶部空出~400px、显得
+    // 头轻脚重。这里直接用行内样式改回顶对齐（行内样式优先级天然盖过 .game-root 的类选择器，
+    // 不用碰共享的 game.css），配合上面 .race-layout 更松的 gap 把余下留白分摊到各段间距里。
+    container.style.justifyContent = 'flex-start';
 
     const lvl = (api.level === 2 || api.level === 3) ? api.level : 1;
     level = generateLevel(lvl);

@@ -122,6 +122,30 @@ function injectStylesOnce() {
     .sort-formula-text.sort-formula--bad { color: var(--lego-orange,#E8710A); }
     .sort-status-text { text-align:center; font-size: var(--font-small); font-weight:700; color: var(--ink-700); min-height: 1.4em; margin:0; }
     .sort-locked { opacity:.55; pointer-events:none; }
+
+    .sort-page { display:flex; flex-direction:column; gap:6px; }
+
+    /* 横屏短视口（如 1024×768）：传送带卡 + 程序卡竖排叠加会超出 768 高，改成
+     * 传送带左 · 程序区右两栏，参照 games/claw.js 同一断点的做法。 */
+    @media (min-width: 700px) and (max-height: 840px) {
+      .sort-page { flex-direction:row; align-items:stretch; gap:14px; }
+      .sort-belt-card.brick-card, .sort-program-card.brick-card { padding: 12px var(--space-3) 6px; flex:1 1 0; min-width:0; }
+      .sort-belt-card { flex:1.05 1 0; }
+      .sort-program-card { justify-content:center; }
+      .sort-bins-row { margin-top:2px; }
+      .sort-bin { min-width:52px; padding:3px 7px; }
+      .sort-bin-count { font-size:17px; }
+      .sort-bin-label { font-size:9.5px; }
+      #sort-recount-btn { min-height:36px; padding:6px 12px; font-size:12px; margin-top:0; }
+      .sort-section-label { margin:0 0 1px; font-size:11px; }
+      .sort-hint { font-size:9.5px; margin:0 0 2px; }
+      #sort-prefix-seq .blocks-seq, #sort-body-seq .blocks-seq { min-height:40px; padding:4px 6px; }
+      #sort-tray .blocks-tray { padding:4px 6px 6px; }
+      .sort-dial-outer { width:clamp(40px,7vw,50px); }
+      .sort-formula-text { font-size: clamp(12px,1.8vw,15px); margin:1px 0; }
+      .sort-program-card .brick-btn { min-height:38px; padding:7px 16px; margin-top:4px; }
+      .sort-status-text { font-size:10.5px; }
+    }
   `;
   document.head.appendChild(style);
 }
@@ -138,42 +162,44 @@ function render(container, api) {
   const bins = { red: 0, blue: 0, yellow: 0 };
 
   container.innerHTML = `
-    <div class="brick-card brick-card--cat-sort sort-belt-card">
-      <p class="title-sm" style="margin:0 0 8px;">🔎 看看传送带上的包裹，找找颜色规律！</p>
-      <div class="sort-stage"><div class="sort-stage-inner" id="sort-belt-box"></div></div>
-      <div class="sort-bins-row" id="sort-bins-row"></div>
-      <div class="flex-center" style="margin-top:4px;">
-        <button class="brick-btn brick-btn--gray brick-btn--sm" id="sort-recount-btn">🔍 再看一遍</button>
-      </div>
-    </div>
-
-    <div class="brick-card brick-card--cat-sort sort-program-card" style="margin-top:6px;">
-      ${isL3 ? `
-      <div>
-        <p class="sort-section-label">① 前置动作（循环外，只做一次，请拖拽加入）</p>
-        <div id="sort-prefix-seq"></div>
-      </div>` : ''}
-      <div>
-        <p class="sort-section-label">${isL3 ? '② ' : ''}循环体 —— 拖 2-4 个动作，组成"每一轮"的样子</p>
-        <div id="sort-tray"></div>
-        <div class="sort-loop-row">
-          <span class="sort-loop-brace">Repeat</span>
-          <div class="sort-dial-outer" id="sort-dial-outer">
-            ${dialFrame({ label: '次' })}
-            <button class="sort-dial-hit sort-dial-hit--up" id="sort-dial-up" aria-label="增加次数"></button>
-            <button class="sort-dial-hit sort-dial-hit--down" id="sort-dial-down" aria-label="减少次数"></button>
-            <div class="sort-dial-readout" id="sort-dial-value">1</div>
-          </div>
-          <span class="sort-loop-brace">次 {</span>
+    <div class="sort-page">
+      <div class="brick-card brick-card--cat-sort sort-belt-card">
+        <p class="title-sm" style="margin:0 0 8px;">🔎 看看传送带上的包裹，找找颜色规律！</p>
+        <div class="sort-stage"><div class="sort-stage-inner" id="sort-belt-box"></div></div>
+        <div class="sort-bins-row" id="sort-bins-row"></div>
+        <div class="flex-center" style="margin-top:4px;">
+          <button class="brick-btn brick-btn--gray brick-btn--sm" id="sort-recount-btn">🔍 再看一遍</button>
         </div>
-        <div id="sort-body-seq"></div>
-        <div class="sort-loop-brace text-center">}</div>
       </div>
-      <p class="sort-formula-text" id="sort-formula-text"></p>
-      <div class="flex-center">
-        <button class="brick-btn brick-btn--green" id="sort-run-btn" disabled>▶ 运行程序</button>
+
+      <div class="brick-card brick-card--cat-sort sort-program-card">
+        ${isL3 ? `
+        <div>
+          <p class="sort-section-label">① 前置动作（循环外，只做一次，请拖拽加入）</p>
+          <div id="sort-prefix-seq"></div>
+        </div>` : ''}
+        <div>
+          <p class="sort-section-label">${isL3 ? '② ' : ''}循环体 —— 拖 2-4 个动作，组成"每一轮"的样子</p>
+          <div id="sort-tray"></div>
+          <div class="sort-loop-row">
+            <span class="sort-loop-brace">Repeat</span>
+            <div class="sort-dial-outer" id="sort-dial-outer">
+              ${dialFrame({ label: '次' })}
+              <button class="sort-dial-hit sort-dial-hit--up" id="sort-dial-up" aria-label="增加次数"></button>
+              <button class="sort-dial-hit sort-dial-hit--down" id="sort-dial-down" aria-label="减少次数"></button>
+              <div class="sort-dial-readout" id="sort-dial-value">1</div>
+            </div>
+            <span class="sort-loop-brace">次 {</span>
+          </div>
+          <div id="sort-body-seq"></div>
+          <div class="sort-loop-brace text-center">}</div>
+        </div>
+        <p class="sort-formula-text" id="sort-formula-text"></p>
+        <div class="flex-center">
+          <button class="brick-btn brick-btn--green" id="sort-run-btn" disabled>▶ 运行程序</button>
+        </div>
+        <p class="sort-status-text" id="sort-status-text"></p>
       </div>
-      <p class="sort-status-text" id="sort-status-text"></p>
     </div>
   `;
 

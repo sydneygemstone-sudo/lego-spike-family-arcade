@@ -191,6 +191,28 @@ function injectStylesOnce() {
       50% { transform: translateY(-3%); }
     }
     .hunt-budget { margin-top:6px; }
+
+    .hunt-page { display:flex; flex-direction:column; gap:16px; }
+    .hunt-controls { display:flex; flex-direction:column; gap:16px; }
+
+    /* 横屏短视口（如 1024×768）：网格卡 + 托盘卡 + 程序卡三段竖排叠加会超出 768 高，
+     * 改成网格左 · 托盘/程序右两栏（右栏内部仍纵向堆叠），参照 games/claw.js 同一断点做法。 */
+    @media (min-width: 700px) and (max-height: 840px) {
+      .hunt-page { flex-direction:row; align-items:stretch; gap:14px; }
+      .hunt-stage-card { flex:1.15 1 0; min-width:0; display:flex; flex-direction:column; }
+      .hunt-grid-outer { flex:1 1 auto; max-height:none; height:auto; min-height:0; }
+      .hunt-controls { flex:1 1 0; min-width:0; gap:8px; justify-content:center; }
+      .hunt-tray-card.brick-card, .hunt-seq-card.brick-card { padding: 12px var(--space-3) 8px; }
+      #hunt-tray .blocks-tray { padding:4px 6px 6px; }
+      #hunt-tray .brick-block { min-width:48px; min-height:40px; padding:6px 8px 5px; font-size:10.5px; margin-top:5px; }
+      #hunt-tray .brick-block .blk-icon { font-size:14px; }
+      .hunt-budget { margin-top:2px; font-size:10.5px; }
+      #hunt-seq .blocks-seq { min-height:44px; padding:6px 8px; }
+      #hunt-seq .brick-block { min-width:44px; min-height:38px; padding:5px 7px 4px; font-size:10px; margin-top:5px; }
+      #hunt-seq .brick-block .blk-icon { font-size:13px; }
+      .hunt-seq-card .brick-btn--lg { min-height:40px; padding:7px 16px; font-size:13.5px; }
+      .hunt-seq-card .brick-btn--sm { min-height:32px; }
+    }
   `;
   document.head.appendChild(style);
 }
@@ -443,7 +465,7 @@ function setControlsEnabled(container, enabled) {
 
 function buildDOM(container) {
   container.innerHTML = `
-    <div class="flex-col gap-4">
+    <div class="hunt-page">
       <div class="brick-card brick-card--cat-hunt hunt-stage-card">
         <div class="flex-between flex-wrap gap-2" style="margin-bottom:4px;">
           <h2 class="title-md" style="margin:0;">🗺️ 网格寻宝</h2>
@@ -453,20 +475,22 @@ function buildDOM(container) {
           <div class="hunt-grid" id="hunt-grid"></div>
         </div>
       </div>
-      <div class="brick-card brick-card--blue">
-        <div class="title-sm" style="margin-bottom:4px;">积木托盘</div>
-        <div id="hunt-tray"></div>
-        <div class="text-muted title-sm hunt-budget" id="hunt-budget" style="display:none;"></div>
-      </div>
-      <div class="brick-card brick-card--yellow">
-        <div class="flex-between flex-wrap gap-2" style="margin-bottom:4px;">
-          <div class="title-sm">你的程序</div>
-          <div class="flex-row gap-2">
-            <button id="hunt-clear" class="brick-btn brick-btn--gray brick-btn--sm">清空</button>
-            <button id="hunt-run" class="brick-btn brick-btn--green brick-btn--lg">▶ 运行</button>
-          </div>
+      <div class="hunt-controls">
+        <div class="brick-card brick-card--blue hunt-tray-card">
+          <div class="title-sm" style="margin-bottom:4px;">积木托盘</div>
+          <div id="hunt-tray"></div>
+          <div class="text-muted title-sm hunt-budget" id="hunt-budget" style="display:none;"></div>
         </div>
-        <div id="hunt-seq"></div>
+        <div class="brick-card brick-card--yellow hunt-seq-card">
+          <div class="flex-between flex-wrap gap-2" style="margin-bottom:4px;">
+            <div class="title-sm">你的程序</div>
+            <div class="flex-row gap-2">
+              <button id="hunt-clear" class="brick-btn brick-btn--gray brick-btn--sm">清空</button>
+              <button id="hunt-run" class="brick-btn brick-btn--green brick-btn--lg">▶ 运行</button>
+            </div>
+          </div>
+          <div id="hunt-seq"></div>
+        </div>
       </div>
     </div>
   `;

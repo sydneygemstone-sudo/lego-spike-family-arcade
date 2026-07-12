@@ -95,15 +95,42 @@ function injectStylesOnce() {
     }
 
     .bridge-stage-card.brick-card, .bridge-trial-card.brick-card, .bridge-formula-card.brick-card, .bridge-config-card.brick-card { padding: 20px var(--space-4) 8px; }
+    .bridge-page { display:flex; flex-direction:column; gap:16px; }
     .bridge-lower-row { display:flex; flex-direction:column; gap:10px; }
     .bridge-trial-card { display:flex; align-items:center; }
     .bridge-trial-row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
     .bridge-trial-hint { color: var(--ink-500); font-size: var(--font-small); font-weight:700; }
+
+    /* 横屏短视口（如 1024×768）：竖排（桥面场景 + 下方配置卡）叠加会超出 768 高，改成
+     * 场景左 · 配置区右两栏（参照 games/claw.js 同一断点的做法）。L1 的 lower-row 原本在
+     * 这个断点会自己横向拆成"试转|算式"两栏——但那是假设桥面场景仍在最上方占满整行；
+     * 现在桥面场景挪去左栏了，lower-row 变成右栏内容，改回纵向堆叠（试转卡在上，算式卡在下），
+     * 不再跟外层的左右分栏抢横向空间。L2/L3 的 config-card 整卡挪到右栏，本来就没有这层
+     * 二次拆分，直接跟着变窄即可（内部 seg-row/leg-row 仍有自己独立的 ≥600px 横排规则）。 */
     @media (min-width: 700px) and (max-height: 840px) {
-      .bridge-lower-row { flex-direction:row; align-items:stretch; }
-      .bridge-trial-card { flex:0 0 34%; }
-      .bridge-formula-card { flex:1; }
-      .bridge-trial-row { flex-direction:column; align-items:flex-start; gap:8px; }
+      .bridge-page { flex-direction:row; align-items:stretch; gap:14px; }
+      .bridge-stage-card { flex:1.1 1 0; min-width:0; padding-top:10px; }
+      .bridge-scene-outer { flex:1 1 auto; max-height:none; height:auto; min-height:0; }
+      .bridge-lower-row, .bridge-config-card { flex:1 1 0; min-width:0; }
+      .bridge-lower-row { flex-direction:column; justify-content:center; gap:8px; }
+      .bridge-trial-card.brick-card, .bridge-formula-card.brick-card { padding: 10px 12px 6px; }
+      .bridge-config-card.brick-card { padding: 22px 12px 6px; }
+      .bridge-trial-row { gap:8px; }
+      .bridge-trial-hint { font-size:10.5px; }
+      .bridge-formula-big { font-size: clamp(13px,2vw,17px); margin-bottom:0; }
+      .bridge-dial-outer { width: clamp(64px,9vw,80px); margin:2px auto 0; }
+      .bridge-dial-readout { font-size: clamp(16px,3vw,22px); }
+      .bridge-config-card .flex-center .brick-btn--lg,
+      .bridge-formula-card .flex-center .brick-btn--lg { min-height:42px; padding:8px 18px; font-size:13.5px; margin-top:4px; }
+      .bridge-status2, .bridge-status { font-size:10.5px; margin-top:4px; }
+      .bridge-seg-row, .bridge-leg-row { gap:6px; }
+      .bridge-seg, .bridge-leg-box { padding:6px; gap:4px; }
+      .bridge-wheel-btn { min-width:60px; min-height:48px; padding:5px 7px; font-size:9.5px; }
+      .bridge-wheel-btn .bwd { font-size:16px !important; }
+      .bridge-seg-stepper { gap:6px; }
+      .bridge-seg-val { font-size:19px; min-width:26px; }
+      .bridge-hint2 { margin:1px 0 3px; font-size:10.5px; }
+      .bridge-leg-wheel { font-size: clamp(11px,1.8vw,13px); }
     }
 
     .bridge-formula-big {
@@ -372,7 +399,7 @@ async function handleGoL1(container) {
 
 function buildDOM_L1(container, steps) {
   container.innerHTML = `
-    <div class="flex-col gap-4">
+    <div class="bridge-page">
       <div class="brick-card brick-card--cat-bridge bridge-stage-card">
         <div class="flex-between flex-wrap gap-2" style="margin-bottom:6px;">
           <h2 class="title-md" style="margin:0;">🌉 精准渡桥</h2>
@@ -459,7 +486,7 @@ function optimalTotalRevs(n) { return Math.ceil(n / 2); }
 
 function buildDOM_L2(container, steps) {
   container.innerHTML = `
-    <div class="flex-col" style="gap:10px;">
+    <div class="bridge-page">
       <div class="brick-card brick-card--cat-bridge bridge-stage-card">
         <div class="flex-between flex-wrap gap-2" style="margin-bottom:6px;">
           <h2 class="title-md" style="margin:0;">🌉 精准渡桥 · 双轮换装</h2>
@@ -678,7 +705,7 @@ function initL2(container, api) {
 function buildDOM_L3(container, steps) {
   const goStep = stepsPerRevOf(goWheel), retStep = stepsPerRevOf(returnWheel);
   container.innerHTML = `
-    <div class="flex-col" style="gap:10px;">
+    <div class="bridge-page">
       <div class="brick-card brick-card--cat-bridge bridge-stage-card">
         <div class="flex-between flex-wrap gap-2" style="margin-bottom:6px;">
           <h2 class="title-md" style="margin:0;">🌉 精准渡桥 · 往返任务</h2>

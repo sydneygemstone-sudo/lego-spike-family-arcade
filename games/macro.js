@@ -145,8 +145,40 @@ function injectStylesOnce() {
     .macro-stage-card { padding-top:22px; }
     .macro-stage { max-height:56vh; display:flex; background:var(--paper-50); border-radius:14px; overflow:hidden; }
     .macro-stage svg { width:100%; height:auto; display:block; }
-    .macro-section { margin-top: 16px; }
+    .macro-section { margin-top: 0; }
     .macro-section--dim { opacity:.45; pointer-events:none; filter: grayscale(.4); }
+
+    .macro-page { display:flex; flex-direction:column; gap:16px; }
+    .macro-left, .macro-right { display:flex; flex-direction:column; gap:16px; }
+
+    /* 横屏短视口（如 1024×768）：目标路径 + 场景 + 定义宏 + 主程序几张卡竖排叠加会大幅
+     * 超出 768 高，改成"观察区"（目标路径+场景）左 · "操作区"（定义宏+主程序）右两栏，
+     * 参照 games/claw.js 同一断点做法，两栏各自继续纵向堆叠、间距/字号收紧。 */
+    @media (min-width: 700px) and (max-height: 840px) {
+      .macro-page { flex-direction:row; align-items:stretch; gap:12px; }
+      .macro-left, .macro-right { flex:1 1 0; min-width:0; gap:8px; }
+      .macro-right { justify-content:center; }
+      .macro-left .brick-card, .macro-right .brick-card { padding: 12px var(--space-3) 8px; }
+      .macro-stage-card { padding-top:12px; }
+      .macro-stage { max-height:26vh; }
+      .macro-trail-cell { width:26px; height:26px; font-size:14px; }
+      .macro-trail-wrap { padding:2px 2px 4px; }
+      #macro-define-tray-0 .blocks-tray, #macro-define-tray-1 .blocks-tray, #macro-main-tray .blocks-tray { padding:4px 6px 6px; }
+      #macro-define-tray-0 .brick-block, #macro-define-tray-1 .brick-block, #macro-main-tray .brick-block {
+        min-width:44px; min-height:36px; padding:5px 7px 4px; font-size:10px; margin-top:5px;
+      }
+      #macro-define-tray-0 .brick-block .blk-icon, #macro-define-tray-1 .brick-block .blk-icon, #macro-main-tray .brick-block .blk-icon { font-size:13px; }
+      #macro-define-seq-0 .blocks-seq, #macro-define-seq-1 .blocks-seq, #macro-main-seq .blocks-seq { min-height:38px; padding:5px 7px; }
+      #macro-define-seq-0 .brick-block, #macro-define-seq-1 .brick-block, #macro-main-seq .brick-block {
+        min-width:40px; min-height:34px; padding:4px 6px 3px; font-size:9.5px; margin-top:5px;
+      }
+      .macro-right .brick-btn { min-height:36px; padding:6px 14px; font-size:12.5px; margin-top:4px; }
+      .macro-def-summary .badge-hex { width:38px; height:44px; font-size:16px; }
+      .macro-name-picker { gap:6px; margin-top:4px; }
+      .macro-name-btn { min-width:56px; }
+      .macro-name-btn .n-icon { font-size:19px; }
+      .macro-expand-stage { min-height:32px; padding:5px 8px; margin-top:5px; }
+    }
     .macro-trail-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; padding: 6px 2px 10px; }
     .macro-trail { display:flex; align-items:center; gap:6px; width:max-content; padding: 4px 2px; }
     .macro-trail-cell {
@@ -227,26 +259,32 @@ function render(container, api) {
   const mainHideInitially = macroSlotCount > 1; // 双宏：主程序区先整块隐藏，省垂直空间，等两个宏都定义完再出现
 
   container.innerHTML = `
-    <div class="brick-card brick-card--cat-macro macro-section">
-      <p class="title-sm" style="margin:0 0 8px;">🔍 仔细看这条路径，藏着什么规律？</p>
-      <div class="macro-trail-wrap"><div class="macro-trail" id="macro-target-trail"></div></div>
-    </div>
+    <div class="macro-page">
+      <div class="macro-left">
+        <div class="brick-card brick-card--cat-macro macro-section">
+          <p class="title-sm" style="margin:0 0 8px;">🔍 仔细看这条路径，藏着什么规律？</p>
+          <div class="macro-trail-wrap"><div class="macro-trail" id="macro-target-trail"></div></div>
+        </div>
 
-    <div class="brick-card brick-card--cat-macro macro-stage-card">
-      <p class="title-sm" style="margin:0 0 8px;">🤖 运行时看机器人怎么按你的程序走位！</p>
-      <div class="macro-stage" id="macro-stage-box"></div>
-    </div>
+        <div class="brick-card brick-card--cat-macro macro-stage-card">
+          <p class="title-sm" style="margin:0 0 8px;">🤖 运行时看机器人怎么按你的程序走位！</p>
+          <div class="macro-stage" id="macro-stage-box"></div>
+        </div>
+      </div>
 
-    ${defineCardsHTML}
+      <div class="macro-right">
+        ${defineCardsHTML}
 
-    <div class="brick-card brick-card--cat-macro macro-section${mainHideInitially ? '' : ' macro-section--dim'}" id="macro-main-card"${mainHideInitially ? ' style="display:none;"' : ''}>
-      <p class="title-sm" style="margin:0;">${mainStepLabel} 用积木铺路，闯关！（善用 My Block 能少摆很多张卡）</p>
-      <div id="macro-main-tray"></div>
-      <div id="macro-main-seq"></div>
-      <div class="macro-expand-stage" id="macro-expand-stage" style="display:none;"></div>
-      <div class="flex-row gap-3" style="margin-top:10px;">
-        <button class="brick-btn brick-btn--blue brick-btn--lg" id="macro-run-btn" disabled>▶ 运行</button>
-        <button class="brick-btn brick-btn--gray brick-btn--sm" id="macro-clear-btn">清空</button>
+        <div class="brick-card brick-card--cat-macro macro-section${mainHideInitially ? '' : ' macro-section--dim'}" id="macro-main-card"${mainHideInitially ? ' style="display:none;"' : ''}>
+          <p class="title-sm" style="margin:0;">${mainStepLabel} 用积木铺路，闯关！（善用 My Block 能少摆很多张卡）</p>
+          <div id="macro-main-tray"></div>
+          <div id="macro-main-seq"></div>
+          <div class="macro-expand-stage" id="macro-expand-stage" style="display:none;"></div>
+          <div class="flex-row gap-3" style="margin-top:10px;">
+            <button class="brick-btn brick-btn--blue brick-btn--lg" id="macro-run-btn" disabled>▶ 运行</button>
+            <button class="brick-btn brick-btn--gray brick-btn--sm" id="macro-clear-btn">清空</button>
+          </div>
+        </div>
       </div>
     </div>
   `;
