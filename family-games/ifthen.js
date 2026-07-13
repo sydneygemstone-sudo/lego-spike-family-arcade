@@ -18,10 +18,23 @@ const RULES = [
   { key: 'bell', color: '#3D7BD9', label: '🔔 铃声', action: 'squat', actionLabel: '蹲下' },
 ];
 
+// 待机屏原来只放一个默认字号的 🚦 emoji，在一整块大白卡里显得又小又空。
+// 换成一个真的"三灯"插画（用设计系统自带的红/黄/绿色块画），更醒目也更贴题。
+function trafficLightHTML() {
+  const dot = (color) => `<div style="width:40px;height:40px;border-radius:50%;background:${color};box-shadow:inset 0 -6px 10px rgba(0,0,0,.28), 0 2px 3px rgba(0,0,0,.2);"></div>`;
+  return `
+    <div style="display:inline-flex;flex-direction:column;align-items:center;gap:12px;padding:16px 20px;background:var(--ink-900);border-radius:20px;box-shadow:0 6px 0 rgba(0,0,0,.25);">
+      ${dot('var(--lego-red)')}
+      ${dot('var(--lego-yellow)')}
+      ${dot('var(--lego-green)')}
+    </div>
+  `;
+}
+
 function render(container, api) {
   let cancelled = false;
   const timers = [];
-  const { Art, rand, sfx, mascot, countdownRing } = api;
+  const { Art, rand, sfx, mascot, countdownRing, completeRound } = api;
 
   function wait(ms) { return new Promise((resolve) => { timers.push(setTimeout(resolve, ms)); }); }
 
@@ -39,7 +52,7 @@ function render(container, api) {
     </div>
 
     <div class="family-stage" id="it-stage">
-      <div class="family-card-icon">🚦</div>
+      <div class="family-card-icon" style="display:flex;align-items:center;justify-content:center;">${trafficLightHTML()}</div>
       <div class="family-card-text">准备好了吗？</div>
       <div class="family-card-sub">点「开始挑战」，一共要闯 ${TOTAL_ROUNDS} 次！</div>
     </div>
@@ -85,7 +98,7 @@ function render(container, api) {
 
   function updateStageWaiting() {
     stage.innerHTML = `
-      <div class="family-card-icon">🤫</div>
+      <div class="family-card-icon" style="width:clamp(64px,14vw,140px);height:clamp(64px,14vw,140px);display:flex;align-items:center;justify-content:center;font-size:clamp(48px,11vw,110px);line-height:1;">🤫</div>
       <div class="family-card-text">等待触发……</div>
       <div class="family-card-sub">盯紧屏幕/竖起耳朵，第 ${roundIndex + 1} / ${TOTAL_ROUNDS} 次</div>
     `;
@@ -119,7 +132,7 @@ function render(container, api) {
   function finishSuccess() {
     running = false;
     stage.innerHTML = `
-      <div class="family-card-icon">🏅</div>
+      <div class="family-card-icon" style="width:clamp(64px,14vw,140px);height:clamp(64px,14vw,140px);display:flex;align-items:center;justify-content:center;font-size:clamp(48px,11vw,110px);line-height:1;">🏅</div>
       <div class="family-card-text">挑战成功！</div>
       <div class="family-card-sub">连续通过了 ${TOTAL_ROUNDS} 次反应考验！</div>
     `;
@@ -127,6 +140,7 @@ function render(container, api) {
     mascot.say('抑制控制满分！你们的反应力太棒了！', 'cheer');
     startBtn.textContent = '▶ 再挑战一次';
     startBtn.style.display = '';
+    completeRound();
   }
 
   function resetAll(message, emotion) {
@@ -135,7 +149,7 @@ function render(container, api) {
     running = false;
     judgeRow.style.display = 'none';
     stage.innerHTML = `
-      <div class="family-card-icon">🚦</div>
+      <div class="family-card-icon" style="display:flex;align-items:center;justify-content:center;">${trafficLightHTML()}</div>
       <div class="family-card-text">${message}</div>
       <div class="family-card-sub">点「开始挑战」，一共要闯 ${TOTAL_ROUNDS} 次！</div>
     `;

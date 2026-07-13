@@ -248,14 +248,32 @@ export function bridgeScene({ steps = 6 } = {}) {
       <text x="${x + bw / 2 - 2}" y="${by + 45}" font-size="17" font-weight="800" fill="${OUTLINE}" text-anchor="middle" dominant-baseline="middle">${i}</text>`;
   }
   const endX = bx + steps * bw;
+  // 桥墩（等距 2-3 根，插入水中）
+  let piers = '';
+  const pierCount = steps >= 6 ? 3 : 2;
+  for (let p = 1; p <= pierCount; p++) {
+    const px = bx + (steps * bw * p) / (pierCount + 1);
+    piers += `<rect x="${(px - 7).toFixed(0)}" y="${by + 24}" width="14" height="52" rx="4" fill="#A87952" stroke="${OUTLINE}" stroke-width="2.2"/>
+      <ellipse cx="${px.toFixed(0)}" cy="${by + 78}" rx="16" ry="5" fill="#8FCFE4" opacity="0.7"/>`;
+  }
   return `
 <svg viewBox="0 0 ${endX + 130} 260" xmlns="http://www.w3.org/2000/svg">
-  <!-- 水面 -->
+  <!-- 云朵 -->
+  <g fill="#FFFFFF" opacity="0.9">
+    <ellipse cx="150" cy="34" rx="30" ry="13"/><ellipse cx="178" cy="28" rx="22" ry="11"/><ellipse cx="126" cy="28" rx="18" ry="9"/>
+    <ellipse cx="${endX - 60}" cy="24" rx="26" ry="11"/><ellipse cx="${endX - 34}" cy="19" rx="18" ry="9"/>
+  </g>
+  <!-- 水面（两层波浪 + 高光） -->
   <rect x="0" y="${by + 62}" width="${endX + 130}" height="60" fill="#BEE3F0"/>
+  ${piers}
   <path d="M10 ${by + 76} q14 -7 28 0 t28 0 t28 0 t28 0 t28 0 t28 0 t28 0 t28 0 t28 0 t28 0 t28 0 t28 0" stroke="#8FCFE4" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M28 ${by + 94} q14 -6 28 0 t28 0 t28 0 t28 0 t28 0 t28 0 t28 0 t28 0 t28 0 t28 0 t28 0" stroke="#DDF2F9" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.85"/>
+  <ellipse cx="${bx + 60}" cy="${by + 108}" rx="26" ry="4" fill="#FFFFFF" opacity="0.5"/>
+  <ellipse cx="${endX - 90}" cy="${by + 112}" rx="34" ry="4.5" fill="#FFFFFF" opacity="0.45"/>
   <!-- 左岸 -->
   <rect x="0" y="${by - 44}" width="${bx - 6}" height="106" rx="10" fill="#57B84E" stroke="${OUTLINE}" stroke-width="2.5"/>
   <rect x="0" y="${by - 44}" width="${bx - 6}" height="18" rx="9" fill="#6FCB66"/>
+  <path d="M22 ${by - 46} q3 -10 6 0 M30 ${by - 46} q3 -8 6 0 M62 ${by - 46} q3 -10 6 0 M70 ${by - 46} q3 -8 6 0" stroke="#3E9137" stroke-width="3" fill="none" stroke-linecap="round"/>
   <!-- 右岸 + 终点旗 -->
   <rect x="${endX + 2}" y="${by - 44}" width="126" height="106" rx="10" fill="#57B84E" stroke="${OUTLINE}" stroke-width="2.5"/>
   <rect x="${endX + 2}" y="${by - 44}" width="126" height="18" rx="9" fill="#6FCB66"/>
@@ -336,10 +354,14 @@ export function trackScene({ tiles = [null, 'red', null, 'green', null, 'red', n
   for (let r = 0; r < 4; r++) for (let c = 0; c < 2; c++) {
     if ((r + c) % 2 === 0) checker += `<rect x="${endX + 14 + c * 16}" y="${ty + 10 + r * 24}" width="16" height="24" fill="#2B2B2B"/>`;
   }
+  // 草地小花簇（四角点缀）
+  const flower = (fx, fy, c) => `<g transform="translate(${fx} ${fy})"><circle r="3.2" fill="${c}"/><circle cx="-5" cy="-3" r="2.6" fill="${c}" opacity="0.85"/><circle cx="5" cy="-3" r="2.6" fill="${c}" opacity="0.85"/><circle cx="0" cy="0" r="1.6" fill="#FFF7DC"/><path d="M0 3 q1 6 0 10" stroke="#7FB874" stroke-width="2" fill="none"/></g>`;
   return `
 <svg viewBox="0 0 ${W} 230" xmlns="http://www.w3.org/2000/svg">
   <!-- 草地 -->
   <rect x="0" y="0" width="${W}" height="230" rx="18" fill="#CBE6C4"/>
+  ${flower(46, 30, '#F5C518')}${flower(W - 60, 34, '#FF8F9E')}${flower(60, 206, '#FF8F9E')}${flower(W - 90, 202, '#F5C518')}${flower(W * 0.5, 22, '#B39DDB')}
+  <path d="M24 40 q3 -9 6 0 M${W - 30} 196 q3 -9 6 0 M${W * 0.5 - 40} 210 q3 -8 6 0" stroke="#7FB874" stroke-width="2.6" fill="none" stroke-linecap="round"/>
   <!-- 跑道 -->
   <rect x="${tx - 40}" y="${ty - 14}" width="${tiles.length * seg + 136}" height="${th + 28}" rx="14" fill="#F2F2E9" stroke="${OUTLINE}" stroke-width="2.5"/>
   ${cells}
@@ -434,6 +456,20 @@ export function clawMachineScene({ gridCount = 8 } = {}) {
       <path id="claw-fingers-r" d="M${x0 + 4} ${railY + 90} Q${x0 + 20} ${railY + 104} ${x0 + 13} ${railY + 118}" stroke="#37474F" stroke-width="5" fill="none" stroke-linecap="round"/>
     </g>
   </g>
+  <!-- 玻璃反光斜线 -->
+  <g stroke="#FFFFFF" stroke-linecap="round" opacity="0.35">
+    <line x1="${W * 0.55}" y1="56" x2="${W * 0.42}" y2="${floorY - 30}" stroke-width="16"/>
+    <line x1="${W * 0.63}" y1="56" x2="${W * 0.52}" y2="${floorY - 60}" stroke-width="7"/>
+  </g>
+  <!-- 出奖口旁已抓到的奖品堆（淡色氛围，避开位置格区不与目标混淆） -->
+  <g opacity="0.55">
+    <circle cx="${x0 - 88}" cy="${floorY - 66}" r="12" fill="#B98A5E" stroke="#37474F" stroke-width="2"/>
+    <circle cx="${x0 - 97}" cy="${floorY - 76}" r="5" fill="#B98A5E" stroke="#37474F" stroke-width="2"/>
+    <circle cx="${x0 - 79}" cy="${floorY - 76}" r="5" fill="#B98A5E" stroke="#37474F" stroke-width="2"/>
+    <rect x="${x0 - 66}" y="${floorY - 72}" width="26" height="15" rx="3" fill="#57B84E" stroke="#37474F" stroke-width="2"/>
+    <circle cx="${x0 - 59}" cy="${floorY - 74}" r="3.5" fill="#6FCB66" stroke="#37474F" stroke-width="1.5"/>
+    <circle cx="${x0 - 47}" cy="${floorY - 74}" r="3.5" fill="#6FCB66" stroke="#37474F" stroke-width="1.5"/>
+  </g>
   <!-- 底部平台与位置格 -->
   <rect x="${x0 - 40}" y="${floorY}" width="${gridCount * cell + 80}" height="12" rx="6" fill="#C7D6E4" stroke="#37474F" stroke-width="2.5"/>
   ${grid}
@@ -491,6 +527,9 @@ export function beltSceneColored({ colors = ['red', 'blue', 'blue'] } = {}) {
   }
   return `
 <svg viewBox="0 0 ${W} 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- 厂房横梁与吊灯 -->
+  <rect x="10" y="8" width="${W - 160}" height="10" rx="5" fill="#9AA7B4" stroke="#37474F" stroke-width="2"/>
+  ${[0.25, 0.55, 0.8].map(p => { const lx = 10 + (W - 160) * p; return `<line x1="${lx.toFixed(0)}" y1="18" x2="${lx.toFixed(0)}" y2="34" stroke="#37474F" stroke-width="2.5"/><path d="M${(lx - 12).toFixed(0)} 46 A12 12 0 0 1 ${(lx + 12).toFixed(0)} 46 Z" fill="#F5C518" stroke="#37474F" stroke-width="2"/><circle cx="${lx.toFixed(0)}" cy="50" r="3.5" fill="#FFF7DC" stroke="#E0A800" stroke-width="1.5"/>`; }).join('')}
   <rect x="${W - 140}" y="20" width="122" height="146" rx="10" fill="#CFE0EE" stroke="#37474F" stroke-width="2.5"/>
   <rect x="${W - 124}" y="52" width="90" height="114" rx="6" fill="#8FB3D4" stroke="#37474F" stroke-width="2"/>
   <text x="${W - 79}" y="42" font-size="15" font-weight="800" fill="#37474F" text-anchor="middle">分拣站</text>

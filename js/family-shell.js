@@ -232,7 +232,9 @@ function buildSkeleton(root) {
 }
 
 async function loadFamilyModule(gameId) {
-  const mod = await import(`../family-games/${gameId}.js`);
+  // 带时间戳查询串强制绕过浏览器/中间层缓存——多个 session 并行改 family-games/*.js
+  // 时，缓存住的旧模块会让人怎么改都"看不出效果"，边追查边怀疑自己。
+  const mod = await import(`../family-games/${gameId}.js?v=${Date.now()}`);
   const candidate = mod.default && typeof mod.default.init === 'function' ? mod.default : mod;
   if (typeof candidate.init !== 'function') {
     throw new Error('真人游戏模块未导出 init(container, api)');
@@ -289,7 +291,13 @@ export async function startFamilyShell(root = document.getElementById('app')) {
   }
   refreshPlaycount();
 
+  // 打卡防刷：必须先完整玩完一轮（游戏侧调用 api.completeRound()）才解锁一次打卡，
+  // 打完立刻重新锁上，逼着下一轮真的玩完才能再打——不然可以对着按钮猛点刷次数。
+  checkinBtn.disabled = true;
+  checkinBtn.title = '先和家人完整玩完一轮，再来打卡吧！';
+
   checkinBtn.addEventListener('click', () => {
+    if (checkinBtn.disabled) return;
     sfx.success();
     bumpPlays(gameId);
     refreshPlaycount();
@@ -297,6 +305,7 @@ export async function startFamilyShell(root = document.getElementById('app')) {
     checkinBtn.classList.remove('anim-pop-in');
     void checkinBtn.offsetWidth;
     checkinBtn.classList.add('anim-pop-in');
+    checkinBtn.disabled = true;
   });
 
   let mod;
@@ -323,6 +332,8 @@ export async function startFamilyShell(root = document.getElementById('app')) {
       beat,
       roleSwap,
       setHowTo(text) { howtoEl.textContent = `💡 ${text}`; },
+      // 游戏侧在"完整玩完一轮"的那一刻调用它，解锁一次打卡（配合上面的防刷锁）。
+      completeRound() { checkinBtn.disabled = false; },
     };
   }
 

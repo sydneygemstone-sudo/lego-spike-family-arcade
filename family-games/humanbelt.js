@@ -6,10 +6,23 @@
  * 协议：export default { id, title, icon, howto, init(container, api), destroy() }。
  */
 
+// 待机屏原来只有一个默认字号的 🎒，大白卡里显得空荡荡；这里把图标放大，
+// 再垫一条黄黑警示纹"传送带"当背景装饰，别让白板空着。
+const BELT_PATH_HTML = `
+  <div style="width:100%;max-width:280px;height:16px;margin:6px auto 0;border-radius:8px;
+    background:repeating-linear-gradient(45deg, var(--lego-yellow) 0 12px, var(--ink-900) 12px 24px);
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.25);"></div>
+`;
+function bigIconStyle() {
+  // .family-card-icon 默认按 clamp(120px,26vw,220px) 撑盒子——只放大字号不够，
+  // 盒子本身也要一起缩到跟字号匹配，否则字大了盒子还是那么大，四周照样空一圈。
+  return 'width:clamp(64px,14vw,140px);height:clamp(64px,14vw,140px);display:flex;align-items:center;justify-content:center;font-size:clamp(48px,11vw,110px);line-height:1;';
+}
+
 function render(container, api) {
   let cancelled = false;
   const timers = [];
-  const { rand, sfx, mascot, countdownRing } = api;
+  const { rand, sfx, mascot, countdownRing, completeRound } = api;
 
   container.innerHTML = `
     <div class="brick-card brick-card--cat-sort">
@@ -22,9 +35,10 @@ function render(container, api) {
     </div>
 
     <div class="family-stage" id="hb-stage">
-      <div class="family-card-icon">🎒</div>
+      <div class="family-card-icon" style="${bigIconStyle()}">🎒</div>
       <div class="family-card-text">准备好了吗？</div>
       <div class="family-card-sub">点「开始传送」，背好积木沿地垫走，听到"叮"就放下一块</div>
+      ${BELT_PATH_HTML}
     </div>
 
     <div class="flex-center" id="hb-beatdot"><div class="family-beat-dot"></div></div>
@@ -75,9 +89,10 @@ function render(container, api) {
     startRow.style.display = 'flex';
     startBtn.textContent = '▶ 开始传送';
     stage.innerHTML = `
-      <div class="family-card-icon">🎒</div>
+      <div class="family-card-icon" style="${bigIconStyle()}">🎒</div>
       <div class="family-card-text">准备好了吗？</div>
       <div class="family-card-sub">背好 ${total} 块积木，点「开始传送」出发</div>
+      ${BELT_PATH_HTML}
     `;
   }
 
@@ -85,9 +100,10 @@ function render(container, api) {
     running = true;
     startRow.style.display = 'none';
     stage.innerHTML = `
-      <div class="family-card-icon">🚶</div>
+      <div class="family-card-icon" style="${bigIconStyle()}">🚶</div>
       <div class="family-card-text">传送带启动……</div>
       <div class="family-card-sub">心里默数，听到"叮"就放下一块</div>
+      ${BELT_PATH_HTML}
     `;
     const maxDrops = rand.int(3, Math.max(3, total - 1));
     for (let i = 0; i < maxDrops; i++) {
@@ -108,7 +124,7 @@ function render(container, api) {
   function stopBelt() {
     running = false;
     stage.innerHTML = `
-      <div class="family-card-icon">🛑</div>
+      <div class="family-card-icon" style="${bigIconStyle()}">🛑</div>
       <div class="family-card-text">传送带停了！</div>
       <div class="family-card-sub">一共背了 ${total} 块，你觉得包里还剩几块？</div>
     `;
@@ -152,6 +168,7 @@ function render(container, api) {
       mascot.say('没关系，再试一次，专心数"叮"的次数！', 'oops');
     }
     submitBtn.disabled = true;
+    completeRound();
     timers.push(setTimeout(() => { if (!cancelled) newRoundReset(); }, 2400));
   });
 

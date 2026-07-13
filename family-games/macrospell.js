@@ -29,6 +29,13 @@ function blockDefs() {
   return ACTION_KEYS.map((k) => ({ id: k, label: ACTION_LABEL[k], color: ACTION_COLOR[k] }));
 }
 
+// 纯 emoji 图标（宏预设图标 / 🎉）默认字号很小，撑在大白卡里显得空——统一放大居中。
+// 盒子本身也要跟着缩到跟字号匹配（不然只字号变大、外面的盒子还是 clamp 默认的
+// 220px 见方，字周围照样空一圈）。
+function bigIconStyle() {
+  return 'width:clamp(64px,14vw,140px);height:clamp(64px,14vw,140px);display:flex;align-items:center;justify-content:center;font-size:clamp(48px,11vw,110px);line-height:1;';
+}
+
 function buildBroadcastStream(rand, macroLen) {
   const total = rand.int(7, 9);
   const stream = [];
@@ -45,9 +52,14 @@ function buildBroadcastStream(rand, macroLen) {
 function render(container, api) {
   let cancelled = false;
   const timers = [];
-  const { Art, rand, sfx, mascot } = api;
+  const { Art, rand, sfx, mascot, completeRound } = api;
 
   function wait(ms) { return new Promise((resolve) => { timers.push(setTimeout(resolve, ms)); }); }
+
+  // family-root 默认 justify-content:center——定义阶段只有一张卡可见时，
+  // 会在卡片上方空出半屏（指令横幅和卡片之间一大片空白）。这里改成顶部对齐，
+  // 卡片自然贴到指令横幅下面，后面阶段卡片增多也是从上往下自然排布。
+  container.style.justifyContent = 'flex-start';
 
   container.innerHTML = `
     <div class="brick-card brick-card--cat-sort" id="ms-define-card">
@@ -119,7 +131,7 @@ function render(container, api) {
     runRow.style.display = 'flex';
     stage.style.display = 'flex';
     stage.innerHTML = `
-      <div class="family-card-icon">${macroDef.icon}</div>
+      <div class="family-card-icon" style="${bigIconStyle()}">${macroDef.icon}</div>
       <div class="family-card-text">宏已就绪：${macroDef.name}</div>
       <div class="family-card-sub">点「开始播报」，听到宏名要做出整套动作！</div>
     `;
@@ -152,7 +164,7 @@ function render(container, api) {
       if (cancelled) return;
       if (item.kind === 'macro') {
         stage.innerHTML = `
-          <div class="family-card-icon">${macroDef.icon}</div>
+          <div class="family-card-icon" style="${bigIconStyle()}">${macroDef.icon}</div>
           <div class="family-card-text">${macroDef.name}！</div>
           <div class="family-card-sub">做出整套动作：${macroDef.actions.map((k) => ACTION_LABEL[k]).join(' → ')}</div>
         `;
@@ -183,7 +195,7 @@ function render(container, api) {
     }
     if (cancelled) return;
     stage.innerHTML = `
-      <div class="family-card-icon">🎉</div>
+      <div class="family-card-icon" style="${bigIconStyle()}">🎉</div>
       <div class="family-card-text">播报完毕！</div>
       <div class="family-card-sub">再点一次可以换一批新的播报</div>
     `;
@@ -192,6 +204,7 @@ function render(container, api) {
     running = false;
     broadcastBtn.disabled = false;
     redefineBtn.disabled = false;
+    completeRound();
   }
 
   broadcastBtn.addEventListener('click', () => {

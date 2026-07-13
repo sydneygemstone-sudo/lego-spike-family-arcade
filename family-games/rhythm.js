@@ -30,7 +30,7 @@ function buildLoop(rand) {
 
 function render(container, api) {
   let cancelled = false;
-  const { Art, rand, sfx, mascot, countdownRing, beat } = api;
+  const { Art, rand, sfx, mascot, countdownRing, beat, completeRound } = api;
 
   container.innerHTML = `
     <div class="brick-card brick-card--cat-race">
@@ -42,7 +42,7 @@ function render(container, api) {
       <div class="family-card-row" id="rh-sheet-row"></div>
     </div>
 
-    <div class="family-stage" id="rh-stage"></div>
+    <div class="family-stage" id="rh-stage" style="min-height:0;"></div>
 
     <div class="flex-center" id="rh-beatdot"><div class="family-beat-dot"></div></div>
 
@@ -90,7 +90,7 @@ function render(container, api) {
 
   function renderStageIdle() {
     stage.innerHTML = `
-      <div class="family-card-icon">🎧</div>
+      <div class="family-card-icon" style="width:clamp(64px,14vw,140px);height:clamp(64px,14vw,140px);display:flex;align-items:center;justify-content:center;font-size:clamp(48px,11vw,110px);line-height:1;">🎧</div>
       <div class="family-card-text">准备好了吗？</div>
       <div class="family-card-sub">点「开始跟拍」，3 秒后节拍器启动</div>
     `;
@@ -128,7 +128,7 @@ function render(container, api) {
     running = false;
     if (beatHandle) beatHandle.stop();
     stage.innerHTML = `
-      <div class="family-card-icon">🏆</div>
+      <div class="family-card-icon" style="width:clamp(64px,14vw,140px);height:clamp(64px,14vw,140px);display:flex;align-items:center;justify-content:center;font-size:clamp(48px,11vw,110px);line-height:1;">🏆</div>
       <div class="family-card-text">挑战成功！</div>
       <div class="family-card-sub">坚持了 ${TOTAL_LOOPS} 轮加速，节奏感满分！</div>
     `;
@@ -137,6 +137,7 @@ function render(container, api) {
     startBtn.textContent = '▶ 再玩一次';
     startBtn.style.display = '';
     stopBtn.style.display = 'none';
+    completeRound();
   }
 
   function startRun() {
