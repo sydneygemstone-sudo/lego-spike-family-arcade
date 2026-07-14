@@ -13,12 +13,28 @@ reader = PdfReader(str(PDF))
 assert len(reader.pages) == 26, f"expected 26 pages, got {len(reader.pages)}"
 assert not reader.is_encrypted, "print kit must not be encrypted"
 
+metadata = reader.metadata or {}
+assert metadata.get("/Author") == "Gemstone Sydney Pty Ltd", "PDF author branding drifted"
+assert metadata.get("/Copyright") == "© 2026 Gemstone Sydney Pty Ltd. All rights reserved.", (
+    "PDF copyright branding drifted"
+)
+assert metadata.get("/Creator") == "Developed by Gemstone Sydney Pty Ltd.", (
+    "PDF developer credit drifted"
+)
+
 for index, page in enumerate(reader.pages, start=1):
     width = float(page.mediabox.width)
     height = float(page.mediabox.height)
     assert abs(width - 594.96) < 1 and abs(height - 841.92) < 1, (
         f"page {index} is not A4: {width} x {height}"
     )
+    assert "Gemstone Sydney Pty Ltd" in (page.extract_text() or ""), (
+        f"page {index} is missing the ownership watermark"
+    )
+
+cover_text = reader.pages[0].extract_text() or ""
+assert "© 2026 Gemstone Sydney Pty Ltd. All rights reserved." in cover_text
+assert "Developed by Gemstone Sydney Pty Ltd." in cover_text
 
 appendix_text = "\n".join((page.extract_text() or "") for page in reader.pages[19:])
 flashcard_text = "\n".join((page.extract_text() or "") for page in reader.pages[:19])

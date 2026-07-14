@@ -244,7 +244,13 @@ function buildSkeleton(root) {
         <div class="family-brand"><i></i><span>FAMILY MISSION CONTROL</span></div>
         <div class="family-topbar-title">
           <span class="family-title-icon" id="family-title-icon"></span>
-          <div><small>当前家庭任务</small><h1 id="family-title">载入任务…</h1></div>
+          <div>
+            <small>当前家庭任务</small><h1 id="family-title">载入任务…</h1>
+            <span class="gs-brand gs-brand--compact" role="contentinfo" aria-label="© 2026 Gemstone Sydney Pty Ltd. All rights reserved.">
+              <span class="gs-brand__watermark">Gemstone Sydney Pty Ltd</span>
+              <span class="gs-brand__copyright">© 2026 Gemstone Sydney Pty Ltd. All rights reserved.</span>
+            </span>
+          </div>
         </div>
         <div class="family-topbar-mascot" id="mascot-slot" aria-hidden="true"></div>
         <div class="family-checkin">
