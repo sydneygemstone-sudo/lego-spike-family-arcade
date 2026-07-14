@@ -52,6 +52,10 @@ function buildSkeleton(root) {
             <span class="level-chip" id="level-chip"></span>
           </div>
           <div class="star-rating star-rating--sm" id="current-stars"></div>
+          <span class="gs-brand gs-brand--compact" role="contentinfo" aria-label="© 2026 Gemstone Sydney Pty Ltd. All rights reserved.">
+            <span class="gs-brand__watermark">Gemstone Sydney Pty Ltd</span>
+            <span class="gs-brand__copyright">© 2026 Gemstone Sydney Pty Ltd. All rights reserved.</span>
+          </span>
         </div>
       </header>
       <main id="game-root" class="game-root"></main>

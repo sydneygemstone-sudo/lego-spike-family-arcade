@@ -1,0 +1,73 @@
+.gs-brand {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-direction: column;
+  gap: 2px;
+  color: inherit;
+  line-height: 1.16;
+  pointer-events: none;
+  user-select: none;
+}
+
+.gs-brand__watermark {
+  overflow: hidden;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  opacity: .72;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gs-brand__copyright,
+.gs-brand__credit {
+  overflow: hidden;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: .025em;
+  opacity: .54;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gs-brand--compact {
+  align-items: flex-start;
+  margin-top: 3px;
+}
+
+.gs-brand--footer {
+  align-items: center;
+  margin-top: 24px;
+  padding: 14px 10px 0;
+  border-top: 1px solid rgba(103, 125, 151, .24);
+  color: #526a84;
+  text-align: center;
+}
+
+.gs-brand--panel {
+  align-items: flex-start;
+  margin-top: 12px;
+  color: #a9bed4;
+}
+
+.mission-footer .gs-brand {
+  align-items: flex-start;
+  margin-top: 6px;
+}
+
+.game-topbar-title .gs-brand,
+.family-topbar-title .gs-brand {
+  color: #b7cce0;
+}
+
+@media (max-width: 620px) {
+  .gs-brand__watermark { font-size: 7.5px; letter-spacing: .045em; }
+  .gs-brand__copyright,
+  .gs-brand__credit { font-size: 6px; letter-spacing: 0; }
+  .gs-brand--footer { margin-top: 18px; }
+}
+
+@media print {
+  .gs-brand { display: none !important; }
+}
