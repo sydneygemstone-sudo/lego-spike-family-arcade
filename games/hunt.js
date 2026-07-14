@@ -59,7 +59,7 @@ function injectStylesOnce() {
     .hunt-card-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:3px; }
     .hunt-budget { font-size:11px; font-weight:850; color:#384868; }
     .hunt-actions { display:flex; gap:8px; align-items:center; }
-    @media (min-width:760px) { .hunt-page { grid-template-columns:minmax(380px,1.08fr) minmax(320px,.92fr); align-items:stretch; } .hunt-stage-card { display:flex; flex-direction:column; } .hunt-grid-outer { flex:1; } .hunt-grid { width:min(45vw,55vh,560px); } .hunt-console { align-content:center; } }
+    @media (min-width:760px) and (orientation:landscape) { .hunt-page { grid-template-columns:minmax(380px,1.08fr) minmax(320px,.92fr); align-items:stretch; } .hunt-stage-card { display:flex; flex-direction:column; } .hunt-grid-outer { flex:1; } .hunt-grid { width:min(45vw,55vh,560px); } .hunt-console { align-content:center; } }
     @media (min-width:700px) and (max-height:840px) { .hunt-page { gap:10px; } .hunt-stage-card { padding:13px !important; } .hunt-grid { width:min(44vw,55vh,430px); } .hunt-mission-head { margin-bottom:3px; } .hunt-brief { font-size:11px; } .hunt-teaching { padding:8px 10px; margin-bottom:5px; font-size:10.5px; } .hunt-console { gap:6px; } .hunt-tray-card,.hunt-seq-card { padding:11px !important; } #hunt-tray .blocks-tray { padding:4px 5px 7px; gap:6px; } #hunt-tray .brick-block { min-width:45px; min-height:39px; padding:5px 6px; font-size:9px; } #hunt-seq .blocks-seq { min-height:58px; padding:6px; gap:5px; } #hunt-seq .brick-block { min-width:42px; min-height:36px; padding:4px 5px; font-size:9px; } }
     @media (max-width:759px) { .hunt-grid { width:min(92vw,46vh,480px); } .hunt-mission-head { align-items:center; } }
   `;

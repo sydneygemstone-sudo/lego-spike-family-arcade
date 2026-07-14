@@ -53,7 +53,7 @@ function injectStylesOnce() {
     .bridge-revs { min-width:30px; text-align:center; font-size:23px; font-weight:950; color:#10233C; }
     .bridge-metrics { margin-top:9px; padding:9px 11px; border-radius:13px; background:#FFF8D9; display:flex; justify-content:space-between; gap:10px; color:#55450C; font-size:11px; font-weight:900; }
     .bridge-run { width:100%; margin-top:9px; }
-    @media (min-width:820px) { .bridge-page { grid-template-columns:minmax(420px,1.12fr) minmax(390px,.88fr); } .bridge-stage-card { display:flex; flex-direction:column; } .bridge-scene-outer { flex:1; } }
+    @media (min-width:820px) and (orientation:landscape) { .bridge-page { grid-template-columns:minmax(420px,1.12fr) minmax(390px,.88fr); } .bridge-stage-card { display:flex; flex-direction:column; } .bridge-scene-outer { flex:1; } }
     @media (min-width:700px) and (max-height:840px) { .bridge-page { gap:10px; } .bridge-stage-card,.bridge-console-card { padding:12px !important; } .bridge-scene-outer { min-height:250px; } .bridge-head { margin-bottom:3px; } .bridge-brief { font-size:10.5px; } .bridge-wheel-guide { margin-bottom:5px; } .bridge-wheel-spec { padding:4px; } .bridge-wheel-dot { width:15px;height:15px;border-width:3px; } .bridge-plan { gap:4px; } .bridge-leg { padding:5px; } .bridge-wheel-btn { padding:4px 3px; font-size:9px; } .bridge-revs { font-size:18px; } .bridge-stepper .brick-btn { min-height:30px; } .bridge-metrics { margin-top:5px;padding:6px; } .bridge-run { margin-top:5px;min-height:38px!important; } }
     @media (max-width:620px) { .bridge-wheel-guide { grid-template-columns:1fr; } .bridge-leg { grid-template-columns:1fr; } .bridge-wheel-buttons { order:2; } .bridge-stepper { justify-content:center; } }
   `;

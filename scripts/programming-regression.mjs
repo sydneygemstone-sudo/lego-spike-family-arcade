@@ -171,7 +171,7 @@ try {
     for (const game of ['claw', 'macro', 'race', 'sort']) {
       await page.goto(`${base}/game.html?g=${game}&l=1`, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.game-action-dock');
-      assert.ok(['sticky', 'fixed'].includes(await page.locator('.game-action-dock').first().evaluate((el) => getComputedStyle(el).position)));
+      assert.equal(await page.locator('.game-action-dock').first().evaluate((el) => getComputedStyle(el).position), 'static');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
     }
     await context.close();
