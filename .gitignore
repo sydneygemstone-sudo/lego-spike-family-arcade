@@ -3,3 +3,8 @@ node_modules/
 *.log
 .vscode/
 .idea/
+.playwright-cli/
+output/
+tmp/
+__pycache__/
+*.pyc

@@ -9,20 +9,18 @@
 
 import { createTray, createSequence } from '../js/blocks-ui.js';
 
-const ACTION_KEYS = ['squat', 'jump', 'spin', 'clap', 'oneleg', 'touchear', 'stomp', 'patlegs', 'raisehand'];
+const ACTION_KEYS = ['clap', 'touchear', 'freeze', 'patlegs', 'raisehand'];
 const ACTION_LABEL = {
-  squat: '蹲下', jump: '跳一下', spin: '转一圈', clap: '拍手',
-  oneleg: '单脚站', touchear: '摸耳朵', stomp: '跺脚', patlegs: '拍腿', raisehand: '举手',
+  clap: '拍手', touchear: '摸耳朵', freeze: '双手停住', patlegs: '拍腿', raisehand: '举手',
 };
 const ACTION_COLOR = {
-  squat: 'green', jump: 'orange', spin: 'purple', clap: 'blue',
-  oneleg: 'cyan', touchear: 'pink', stomp: 'red', patlegs: 'yellow', raisehand: 'green',
+  clap: 'blue', touchear: 'pink', freeze: 'cyan', patlegs: 'yellow', raisehand: 'green',
 };
 const NAME_PRESETS = [
-  { name: '忍者闪避', icon: '🥷' },
-  { name: '火箭步', icon: '🚀' },
-  { name: '超级变身', icon: '⭐' },
-  { name: '兔子跳', icon: '🐇' },
+  { name: '星光信号', code: 'L' },
+  { name: '节拍密码', code: 'R' },
+  { name: '超级变身', code: 'S' },
+  { name: '机器人问候', code: 'H' },
 ];
 
 function blockDefs() {
@@ -36,23 +34,21 @@ function bigIconStyle() {
   return 'width:clamp(64px,14vw,140px);height:clamp(64px,14vw,140px);display:flex;align-items:center;justify-content:center;font-size:clamp(48px,11vw,110px);line-height:1;';
 }
 
-function buildBroadcastStream(rand, macroLen) {
-  const total = rand.int(7, 9);
-  const stream = [];
-  for (let i = 0; i < total; i++) {
-    if (rand.int(1, 10) <= 4) {
-      stream.push({ kind: 'macro' });
-    } else {
-      stream.push({ kind: 'action', key: rand.pick(ACTION_KEYS) });
-    }
-  }
-  return stream;
+export function buildBroadcastStream(rand) {
+  // 每轮固定 5 项：恰好 2 次宏 + 3 个单动作，避免随机结果变成全宏或无宏。
+  return rand.shuffle([
+    { kind: 'macro' },
+    { kind: 'macro' },
+    { kind: 'action', key: rand.pick(ACTION_KEYS) },
+    { kind: 'action', key: rand.pick(ACTION_KEYS) },
+    { kind: 'action', key: rand.pick(ACTION_KEYS) },
+  ]);
 }
 
 function render(container, api) {
   let cancelled = false;
   const timers = [];
-  const { Art, rand, sfx, mascot, completeRound } = api;
+  const { Art, rand, sfx, mascot, completeRound, emitFeedback, glyph } = api;
 
   function wait(ms) { return new Promise((resolve) => { timers.push(setTimeout(resolve, ms)); }); }
 
@@ -66,7 +62,7 @@ function render(container, api) {
       <p class="title-sm" style="margin:0;">① 全家一起拖 2-4 个动作，定义一个"宏"</p>
       <div id="ms-tray"></div>
       <div id="ms-seq"></div>
-      <button class="brick-btn brick-btn--purple" id="ms-confirm-btn" disabled>✅ 确认宏</button>
+      <button class="brick-btn brick-btn--purple" id="ms-confirm-btn" disabled>确认宏</button>
       <div id="ms-name-picker" class="flex-row gap-3" style="flex-wrap:wrap; display:none; margin-top:8px;"></div>
       <div id="ms-def-summary" class="flex-row gap-3" style="align-items:center; display:none; margin-top:10px;"></div>
     </div>
@@ -74,8 +70,15 @@ function render(container, api) {
     <div class="family-stage" id="ms-stage" style="display:none;"></div>
 
     <div class="flex-row gap-3" style="justify-content:center; flex-wrap:wrap; display:none;" id="ms-run-row">
-      <button class="brick-btn brick-btn--blue brick-btn--lg" id="ms-broadcast-btn">📣 开始播报</button>
-      <button class="brick-btn brick-btn--purple" id="ms-redefine-btn">🔄 重新定义宏</button>
+      <button class="brick-btn brick-btn--blue brick-btn--lg" id="ms-broadcast-btn">开始播报</button>
+      <button class="brick-btn brick-btn--purple" id="ms-redefine-btn">重新定义宏</button>
+    </div>
+    <div class="family-judge-panel" id="ms-judge-row" style="display:none;">
+      <strong>主持人判定：每次听到宏名，都完整做出了整套动作吗？</strong>
+      <div class="flex-row gap-3" style="justify-content:center;flex-wrap:wrap;">
+        <button class="brick-btn brick-btn--green brick-btn--lg" id="ms-pass-btn">全部展开正确</button>
+        <button class="brick-btn brick-btn--red brick-btn--lg" id="ms-fail-btn">漏了动作 · 再试</button>
+      </div>
     </div>
   `;
 
@@ -89,6 +92,9 @@ function render(container, api) {
   const runRow = container.querySelector('#ms-run-row');
   const broadcastBtn = container.querySelector('#ms-broadcast-btn');
   const redefineBtn = container.querySelector('#ms-redefine-btn');
+  const judgeRow = container.querySelector('#ms-judge-row');
+  const passBtn = container.querySelector('#ms-pass-btn');
+  const failBtn = container.querySelector('#ms-fail-btn');
 
   const tray = createTray(trayEl, blockDefs());
   const seq = createSequence(seqEl, { maxSlots: 4, emptyText: '拖 2-4 个动作积木到这里 →' });
@@ -104,7 +110,7 @@ function render(container, api) {
     sfx.click();
     namePicker.style.display = 'flex';
     namePicker.innerHTML = NAME_PRESETS.map((p, i) => `
-      <button class="brick-btn brick-btn--yellow" data-i="${i}"><span style="font-size:22px;">${p.icon}</span>&nbsp;${p.name}</button>
+      <button class="brick-btn brick-btn--yellow" data-i="${i}"><span class="macro-name-code">${p.code}</span>&nbsp;${p.name}</button>
     `).join('');
     confirmBtn.disabled = true;
     namePicker.querySelectorAll('button').forEach((btn) => {
@@ -115,12 +121,12 @@ function render(container, api) {
 
   function finalizeMacro(preset) {
     const snapshot = seq.getSequence();
-    macroDef = { name: preset.name, icon: preset.icon, actions: snapshot.map((b) => b.type) };
+    macroDef = { name: preset.name, code: preset.code, actions: snapshot.map((b) => b.type) };
     sfx.success();
     namePicker.style.display = 'none';
     defSummary.style.display = 'flex';
     defSummary.innerHTML = `
-      <div class="badge-hex" style="--badge-color: var(--cat-sort);">${macroDef.icon}</div>
+      <div class="badge-hex macro-code-badge" style="--badge-color: var(--cat-sort);">${macroDef.code}</div>
       <div>
         <div class="title-sm">${macroDef.name} = ${macroDef.actions.map((k) => ACTION_LABEL[k]).join(' + ')}</div>
       </div>
@@ -131,11 +137,12 @@ function render(container, api) {
     runRow.style.display = 'flex';
     stage.style.display = 'flex';
     stage.innerHTML = `
-      <div class="family-card-icon" style="${bigIconStyle()}">${macroDef.icon}</div>
+      <div class="family-card-icon" style="${bigIconStyle()}">${glyph('spark')}</div>
       <div class="family-card-text">宏已就绪：${macroDef.name}</div>
       <div class="family-card-sub">点「开始播报」，听到宏名要做出整套动作！</div>
     `;
     mascot.say('宏定义好了！点开始播报，听到宏名字要做完整套动作哦！', 'cheer', 4200);
+    emitFeedback('ready', { label: `宏已定义：${macroDef.name}` });
   }
 
   redefineBtn.addEventListener('click', () => {
@@ -159,57 +166,65 @@ function render(container, api) {
     running = true;
     broadcastBtn.disabled = true;
     redefineBtn.disabled = true;
-    const stream = buildBroadcastStream(rand, macroDef.actions.length);
+    defineCard.style.display = 'none';
+    const stream = buildBroadcastStream(rand);
+    judgeRow.style.display = 'none';
+    emitFeedback('action', { label: `播报中 · 记住 ${macroDef.actions.length} 个宏动作` });
     for (const item of stream) {
       if (cancelled) return;
       if (item.kind === 'macro') {
         stage.innerHTML = `
-          <div class="family-card-icon" style="${bigIconStyle()}">${macroDef.icon}</div>
+          <div class="family-card-icon" style="${bigIconStyle()}">${glyph('broadcast')}</div>
           <div class="family-card-text">${macroDef.name}！</div>
-          <div class="family-card-sub">做出整套动作：${macroDef.actions.map((k) => ACTION_LABEL[k]).join(' → ')}</div>
+          <div class="family-card-sub">现在凭记忆完成整套动作；屏幕不会泄露答案</div>
         `;
         sfx.snap();
-        await wait(1000);
-        if (cancelled) return;
-        for (const key of macroDef.actions) {
-          if (cancelled) return;
-          stage.innerHTML = `
-            <div class="family-card-sub">「${macroDef.name}」展开中……</div>
-            <div class="family-card-icon">${Art.actionIcons[key]()}</div>
-            <div class="family-card-text">${ACTION_LABEL[key]}</div>
-          `;
-          sfx.click();
-          await wait(900);
-          if (cancelled) return;
-        }
-        await wait(500);
+        await wait(Math.max(1200, macroDef.actions.length * 650));
       } else {
         stage.innerHTML = `
           <div class="family-card-icon">${Art.actionIcons[item.key]()}</div>
           <div class="family-card-text">${ACTION_LABEL[item.key]}</div>
         `;
         sfx.click();
-        await wait(1500);
+        await wait(800);
       }
       if (cancelled) return;
     }
     if (cancelled) return;
     stage.innerHTML = `
-      <div class="family-card-icon" style="${bigIconStyle()}">🎉</div>
+      <div class="family-card-icon" style="${bigIconStyle()}">${glyph('success')}</div>
       <div class="family-card-text">播报完毕！</div>
       <div class="family-card-sub">再点一次可以换一批新的播报</div>
     `;
     sfx.success();
-    mascot.say('播报完毕，全家默契值爆表！', 'cheer');
+    mascot.say('播报完毕，主持人来核对每次宏有没有完整展开。', 'cheer');
     running = false;
-    broadcastBtn.disabled = false;
-    redefineBtn.disabled = false;
-    completeRound();
+    judgeRow.style.display = 'grid';
+    emitFeedback('round', { label: '播报结束 · 等待主持人判定' });
   }
 
   broadcastBtn.addEventListener('click', () => {
     sfx.click();
     runBroadcast();
+  });
+
+  passBtn.addEventListener('click', () => {
+    sfx.success();
+    judgeRow.style.display = 'none';
+    broadcastBtn.disabled = false;
+    redefineBtn.disabled = false;
+    defineCard.style.display = '';
+    mascot.say('宏展开全部正确，挑战通过！', 'cheer');
+    completeRound();
+  });
+  failBtn.addEventListener('click', () => {
+    sfx.fail();
+    judgeRow.style.display = 'none';
+    broadcastBtn.disabled = false;
+    redefineBtn.disabled = false;
+    defineCard.style.display = '';
+    emitFeedback('miss', { label: '宏展开不完整 · 本轮不打卡' });
+    mascot.say('漏了动作，再听一轮，把宏完整展开！', 'oops');
   });
 
   mascot.say('先拖几个动作积木，定义一个专属的"宏"吧！', 'idle', 4200);
@@ -229,7 +244,7 @@ export default {
   id: 'macrospell',
   title: '口令宏',
   icon: '🔮',
-  howto: '先拖动作积木定义一个宏并取名，再听 iPad 播报——听到宏名字要做出整套动作！',
+  howto: '先用坐姿动作定义宏；一轮一定出现 2 次宏和 3 个单动作，播报时不会显示宏的答案。',
   init(container, api) {
     activeHandle = render(container, api);
   },

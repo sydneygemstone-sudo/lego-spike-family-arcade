@@ -16,25 +16,27 @@
  */
 
 import { createTray, createSequence } from '../js/blocks-ui.js';
-import * as Art from '../assets/art.js';
+import { advanceMacroPose, judgeMacroProgram, scoreMacroProgram } from '../js/program-ast.js';
+import * as Art from './mission-art.js';
 
 const ACTIONS = ['fwd', 'left', 'right'];
 const ACTION_META = {
-  fwd: { label: 'Move Forward', icon: '⬆️', color: 'blue' },
-  left: { label: 'Turn Left', icon: '⬅️', color: 'green' },
-  right: { label: 'Turn Right', icon: '➡️', color: 'orange' },
+  fwd: { label: 'Move Forward', icon: '↑', color: 'blue' },
+  left: { label: 'Turn Left', icon: '←', color: 'green' },
+  right: { label: 'Turn Right', icon: '→', color: 'orange' },
 };
 // 目标路径条用的方向符号——普通 Unicode 箭头，不是 emoji，场景/线索区都能安全使用。
 const TRAIL_ICON = { fwd: '↑', left: '←', right: '→' };
 const MACRO_NAME_PRESETS = [
-  { name: '火箭步', icon: '🚀' },
-  { name: '兔子跳', icon: '🐇' },
-  { name: '忍者踏', icon: '🥷' },
-  { name: '超级招式', icon: '⭐' },
+  { name: '向量 A', icon: 'A' },
+  { name: '向量 B', icon: 'B' },
+  { name: '序列 X', icon: 'X' },
+  { name: '序列 Y', icon: 'Y' },
 ];
 
-function randInt(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
-function pick(arr) { return arr[randInt(0, arr.length - 1)]; }
+let randSource = null;
+function randInt(a, b) { return randSource?.int ? randSource.int(a, b) : a + Math.floor(Math.random() * (b - a + 1)); }
+function pick(arr) { return randSource?.pick ? randSource.pick(arr) : arr[randInt(0, arr.length - 1)]; }
 function baseBlockDefs() {
   return ACTIONS.map((id) => ({ id, label: ACTION_META[id].label, icon: ACTION_META[id].icon, color: ACTION_META[id].color }));
 }
@@ -61,7 +63,7 @@ function buildPlanL1() {
   suffix.forEach((t) => target.push({ type: t, segment: 'suffix' }));
 
   const optimalCount = prefixLen + repeatCount + suffixLen;
-  return { target, optimalCount, macroSlotCount: 1 };
+  return { target, optimalCount, topLevelBudget: optimalCount + 1, requiredMacroInvocations: repeatCount, macroSlotCount: 1 };
 }
 
 /* -------------------------------------------------------------------------- L2：更长序列、周期固定 4、干扰前后缀 --------------------------------------------------------------------------
@@ -83,7 +85,7 @@ function buildPlanL2() {
   suffix.forEach((t) => target.push({ type: t, segment: 'suffix' }));
 
   const optimalCount = prefixLen + repeatCount + suffixLen;
-  return { target, optimalCount, macroSlotCount: 1 };
+  return { target, optimalCount, topLevelBudget: optimalCount, requiredMacroInvocations: repeatCount, macroSlotCount: 1 };
 }
 
 /* -------------------------------------------------------------------------- L3：双宏，两种模式段交错 --------------------------------------------------------------------------
@@ -108,13 +110,16 @@ function buildPlanL3() {
   push(motifA, 'CDC', 0); push(motifB, 'CDC', 1); push(motifA, 'CDC', 2);
 
   const optimalCount = 4 + 3; // 段一 4 张宏卡 + 段二 3 张宏卡（都用宏时的最省张数）
-  return { target, optimalCount, macroSlotCount: 2 };
+  return { target, optimalCount, topLevelBudget: optimalCount, requiredMacroInvocations: optimalCount, macroSlotCount: 2 };
 }
 
-function buildLevelPlan(level) {
-  if (level === 3) return buildPlanL3();
-  if (level === 2) return buildPlanL2();
-  return buildPlanL1();
+export function buildMacroLevelPlan(level, suppliedRand = null) {
+  randSource = suppliedRand;
+  const mission = Math.max(1, Math.min(10, Number(level) || 1));
+  const tier = mission <= 3 ? 1 : mission <= 6 ? 2 : 3;
+  if (tier === 3) return { ...buildPlanL3(), mission, tier };
+  if (tier === 2) return { ...buildPlanL2(), mission, tier };
+  return { ...buildPlanL1(), mission, tier };
 }
 
 /* -------------------------------------------------------------------------- 执行步道几何 --------------------------------------------------------------------------
@@ -212,6 +217,10 @@ function injectStylesOnce() {
     .macro-expand-stage .exp-icon { font-size:22px; opacity:.25; transition: opacity .18s ease, transform .18s ease; }
     .macro-expand-stage .exp-icon--lit { opacity:1; transform: scale(1.2); }
     .macro-locked { pointer-events:none; opacity:.7; }
+    .macro-budget {
+      margin:4px 0 0; padding:7px 10px; border-radius:10px; background:#FFF0F7;
+      border:2px solid var(--cat-macro,#E0218A); color:#72134A; font-size:12px; font-weight:900;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -223,7 +232,7 @@ function wait(ms, timers) {
 function render(container, api) {
   let cancelled = false;
   const timers = [];
-  const plan = buildLevelPlan(api.level);
+  const plan = buildMacroLevelPlan(api.level, api.rand);
   const macroSlotCount = plan.macroSlotCount; // 1（L1/L2）或 2（L3）
   const stageCellCount = plan.target.length + 1;
   const macroDefs = new Array(macroSlotCount).fill(null); // 每槽 {name, icon, actions:[type,...]} | null
@@ -231,6 +240,7 @@ function render(container, api) {
   let mainTray = null;
   let mainSeq = null;
   let running = false;
+  let attempts = 0;
   let stageIndex = 0;
   let stageTurnDeg = 0;
 
@@ -249,7 +259,7 @@ function render(container, api) {
       <p class="title-sm" style="margin:0;">${label}</p>
       <div id="macro-define-tray-${i}"></div>
       <div id="macro-define-seq-${i}"></div>
-      <button class="brick-btn brick-btn--purple" id="macro-confirm-btn-${i}" disabled>✅ 确认宏</button>
+      <button class="brick-btn brick-btn--purple" id="macro-confirm-btn-${i}" disabled>确认函数</button>
       <div class="macro-name-picker" id="macro-name-picker-${i}" style="display:none;"></div>
       <div class="macro-def-summary" id="macro-def-summary-${i}" style="display:none; margin-top:10px;"></div>
     </div>`;
@@ -262,12 +272,12 @@ function render(container, api) {
     <div class="macro-page">
       <div class="macro-left">
         <div class="brick-card brick-card--cat-macro macro-section">
-          <p class="title-sm" style="margin:0 0 8px;">🔍 仔细看这条路径，藏着什么规律？</p>
+          <p class="title-sm" style="margin:0 0 8px;">PATTERN SCAN / 找出路径中的重复结构</p>
           <div class="macro-trail-wrap"><div class="macro-trail" id="macro-target-trail"></div></div>
         </div>
 
         <div class="brick-card brick-card--cat-macro macro-stage-card">
-          <p class="title-sm" style="margin:0 0 8px;">🤖 运行时看机器人怎么按你的程序走位！</p>
+          <p class="title-sm" style="margin:0 0 8px;">EXECUTION VIEW / 观察程序展开后的行动</p>
           <div class="macro-stage" id="macro-stage-box"></div>
         </div>
       </div>
@@ -279,9 +289,10 @@ function render(container, api) {
           <p class="title-sm" style="margin:0;">${mainStepLabel} 用积木铺路，闯关！（善用 My Block 能少摆很多张卡）</p>
           <div id="macro-main-tray"></div>
           <div id="macro-main-seq"></div>
+          <p class="macro-budget" id="macro-budget">压缩挑战：0 / ${plan.topLevelBudget} 张可拿满星；正确路线一定可以过关</p>
           <div class="macro-expand-stage" id="macro-expand-stage" style="display:none;"></div>
-          <div class="flex-row gap-3" style="margin-top:10px;">
-            <button class="brick-btn brick-btn--blue brick-btn--lg" id="macro-run-btn" disabled>▶ 运行</button>
+          <div class="flex-row gap-3 game-action-dock" style="margin-top:10px;">
+            <button class="brick-btn brick-btn--blue brick-btn--lg" id="macro-run-btn" disabled>▶ 执行程序</button>
             <button class="brick-btn brick-btn--gray brick-btn--sm" id="macro-clear-btn">清空</button>
           </div>
         </div>
@@ -294,6 +305,7 @@ function render(container, api) {
   const mainCard = container.querySelector('#macro-main-card');
   const expandStage = container.querySelector('#macro-expand-stage');
   const runBtn = container.querySelector('#macro-run-btn');
+  const budgetEl = container.querySelector('#macro-budget');
   const clearBtn = container.querySelector('#macro-clear-btn');
 
   const confirmBtns = Array.from({ length: macroSlotCount }, (_, i) => container.querySelector(`#macro-confirm-btn-${i}`));
@@ -313,9 +325,9 @@ function render(container, api) {
     roverNestEl.style.transition = 'transform .4s ease';
   }
   function advanceStage(actionType) {
-    stageIndex += 1;
-    if (actionType === 'left') stageTurnDeg -= 90;
-    else if (actionType === 'right') stageTurnDeg += 90;
+    const pose = advanceMacroPose({ index: stageIndex, turnDeg: stageTurnDeg }, actionType);
+    stageIndex = pose.index;
+    stageTurnDeg = pose.turnDeg;
     const dx = Art.trackCellX(stageIndex) - Art.trackCellX(0);
     roverNestEl.style.transform = `translate(${dx}px, 0) rotate(${ROVER_BASE_DEG + stageTurnDeg}deg)`;
   }
@@ -392,7 +404,7 @@ function render(container, api) {
         <div class="title-sm">${macroDefs[i].name}</div>
         <div class="macro-def-actions">${macroDefs[i].actions.map((t) => ACTION_META[t].icon).join('')}</div>
       </div>
-      <button class="brick-btn brick-btn--gray brick-btn--sm" id="macro-redefine-btn-${i}">🔄 重新定义</button>
+      <button class="brick-btn brick-btn--gray brick-btn--sm" id="macro-redefine-btn-${i}">重新定义</button>
     `;
     container.querySelector(`#macro-redefine-btn-${i}`).addEventListener('click', () => resetDefineSlot(i));
 
@@ -456,9 +468,12 @@ function render(container, api) {
     const macroTileDefs = macroDefs.map((def, i) => ({ id: `myblock${i}`, label: def.name, icon: def.icon, color: 'pink' }));
     const defs = [...baseBlockDefs(), ...macroTileDefs];
     mainTray = createTray(trayEl, defs);
-    mainSeq = createSequence(seqEl, { maxSlots: 30, emptyText: '拼出完整路径吧（可以用 My Block 省很多张卡）→' });
+    mainSeq = createSequence(seqEl, { maxSlots: plan.target.length, emptyText: `照着路线摆；用红色 My Block 压缩到 ${plan.topLevelBudget} 张可拿满星 →` });
     mainSeq.onChange((list) => {
       runBtn.disabled = running || list.length === 0;
+      const macroCount = list.filter((item) => /^myblock\d+$/.test(item.type)).length;
+      budgetEl.textContent = `压缩挑战：${list.length} 张（满星目标 ≤ ${plan.topLevelBudget}）；红色函数调用 ${macroCount} / ${plan.requiredMacroInvocations}`;
+      budgetEl.style.borderColor = list.length <= plan.topLevelBudget && macroCount >= plan.requiredMacroInvocations ? 'var(--lego-green,#237841)' : '';
     });
 
     if (typeof window !== 'undefined' && window.__LSFA_TEST__ && window.__lsfaMacro) {
@@ -500,12 +515,24 @@ function render(container, api) {
     if (running) return;
     const list = mainSeq.getSequence();
     if (list.length === 0) return;
-    const flat = expandSequence(list);
+    attempts += 1;
     const targetTypes = plan.target.map((t) => t.type);
+    const verdict = judgeMacroProgram({
+      program: list.map((item) => item.type),
+      definitions: macroDefs.map((def) => def.actions),
+      target: targetTypes,
+      topLevelBudget: plan.topLevelBudget,
+      requiredMacroCount: plan.requiredMacroInvocations,
+    });
 
-    if (!sequencesEqual(flat, targetTypes)) {
-      api.fail('sequence-mismatch');
-      api.mascot.say('顺序不太对，再检查一下吧！', 'oops');
+    if (!verdict.ok) {
+      api.fail(verdict.reason);
+      const msg = verdict.reason === 'macro-required'
+        ? `基础积木能走通，但不算过关：请调用红色 My Block 至少 ${plan.requiredMacroInvocations} 次！`
+        : verdict.reason === 'budget-exceeded'
+          ? `主程序只有 ${plan.topLevelBudget} 个位置，请把重复动作压进红色函数！`
+          : '程序展开后和目标路径不一致，检查第一个出错位置吧！';
+      api.mascot.say(msg, 'oops');
       flashTrailBad();
       return;
     }
@@ -567,17 +594,16 @@ function render(container, api) {
     if (cancelled) return;
 
     const usedCount = list.length;
-    const diff = usedCount - plan.optimalCount;
-    let stars;
-    if (macroSlotCount > 1) {
-      const usedFlags = macroDefs.map((_, i) => list.some((it) => it.type === `myblock${i}`));
-      const usedBoth = usedFlags.every(Boolean);
-      const usedAny = usedFlags.some(Boolean);
-      stars = usedBoth && usedCount <= plan.optimalCount ? 3 : usedAny ? 2 : 1;
-    } else {
-      const usedMacro = list.some((it) => it.type === 'myblock0');
-      stars = usedMacro && diff <= 0 ? 3 : diff <= 3 ? 2 : 1;
-    }
+    const usedFlags = macroDefs.map((_, i) => list.some((it) => it.type === `myblock${i}`));
+    const distinctMacros = usedFlags.filter(Boolean).length;
+    const { stars } = scoreMacroProgram({
+      attempts,
+      topLevelCount: usedCount,
+      targetLength: targetTypes.length,
+      optimalCount: plan.optimalCount,
+      distinctMacros,
+      requiredDistinctMacros: macroSlotCount,
+    });
 
     api.mascot.say('闯关成功！', 'cheer');
     api.complete(stars);
@@ -613,7 +639,7 @@ let activeHandle = null;
 export default {
   id: 'macro',
   title: '口诀大师',
-  icon: '📜',
+  icon: '{ }',
   init(container, api) {
     injectStylesOnce();
     activeHandle = render(container, api);

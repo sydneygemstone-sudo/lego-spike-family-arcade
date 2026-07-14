@@ -55,6 +55,10 @@ function injectStylesOnce() {
       border-color: var(--lego-red, #D01012);
       background: rgba(208,16,18,.10);
     }
+    .blocks-seq--active {
+      border-color: var(--lego-yellow, #F5C518);
+      box-shadow: 0 0 0 3px rgba(245,197,24,.2);
+    }
     .blocks-seq-empty-hint {
       color: #8A929A;
       font-size: 14px;
@@ -321,6 +325,11 @@ export function createSequence(container, opts = {}) {
 
   const handle = {
     el, getSequence, setSequence, addBlock, removeAt, removeByUid, moveItem, clear, onChange,
+    activate() {
+      registeredSequences.forEach((seq) => seq.el.classList.remove('blocks-seq--active'));
+      defaultSequence = handle;
+      el.classList.add('blocks-seq--active');
+    },
     isFull: () => maxSlots !== null && sequence.length >= maxSlots,
     destroy() {
       const i = registeredSequences.indexOf(handle);
@@ -331,6 +340,8 @@ export function createSequence(container, opts = {}) {
   };
   registeredSequences.push(handle);
   defaultSequence = handle;
+  el.addEventListener('pointerdown', () => handle.activate(), { capture: true });
+  handle.activate();
   handle._internal = { get sequence() { return sequence; }, set sequence(v) { sequence = v; }, renderAll, emit };
   return handle;
 }

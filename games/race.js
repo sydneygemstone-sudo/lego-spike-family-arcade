@@ -11,14 +11,15 @@
  * 轨道格而非线性序列)+ 轻点选中→轻点格子放置的兜底交互(触屏友好)。
  */
 
-import { trackScene, trackCellX, roverTop } from '../assets/art.js';
+import { trackScene, trackCellX, roverTop } from './mission-art.js';
+import { judgeRaceMove, solveRaceRoute, tryPlaceRaceBlock } from '../js/program-ast.js';
 
 /* -------------------------------------------------------------------------
  * 常量(与 assets/art.js#trackScene 内部布局常量保持一致,用于把 viewBox 坐标
  * 换算成 %布局,supplied by trackCellX 已导出,其余几何常量需要镜像)
  * ------------------------------------------------------------------------- */
 const SEG = 84, TX = 90, TAIL = 130, TY = 60, TH = 110, VBH = 230;
-const MAX_HOPS = 15;
+const MAX_HOPS = 24;
 const DRAG_THRESHOLD = 8;
 const EXEC_HIGHLIGHT_MS = 360;
 const STEP_GAP_MS = 180;
@@ -27,23 +28,23 @@ const STEP_GAP_MS = 180;
 const BLOCK_DEFS = {
   fwd2: { delta: 2, label: '前进 2 格', icon: '→', color: 'blue' },
   fwd3: { delta: 3, label: '前进 3 格', icon: '⇒', color: 'cyan' },
-  skip: { delta: 2, label: '跳跃 2 格', icon: '↷', color: 'purple' },
+  jump3: { delta: 3, label: '跳过断轨 3 格', icon: '↷', color: 'purple' },
   back1: { delta: -1, label: '后退 1 格', icon: '←', color: 'pink' },
 };
 
 const LEVEL_CONFIG = {
   1: { lenMin: 5, lenMax: 6, types: ['fwd2', 'fwd3'], targetMode: 'tail', requireType: null, minDecoys: 0, noBaselineExtras: false, noForwardShortcut: false },
-  2: { lenMin: 6, lenMax: 8, types: ['fwd2', 'fwd3', 'skip'], targetMode: 'tail', requireType: 'skip', minDecoys: 1, noBaselineExtras: false, noForwardShortcut: false },
+  2: { lenMin: 6, lenMax: 8, types: ['fwd2', 'fwd3', 'jump3'], targetMode: 'tail', requireType: 'jump3', minDecoys: 1, noBaselineExtras: false, noForwardShortcut: false },
   // noForwardShortcut:目标必须真的"需要冲过头再退回来"——如果仅用前进类块(不含 back1)也能
   // 用同样或更少块数抵达,那这一局并没有教到"回退"概念,判定失败并重新生成。
   // noBaselineExtras:不给未用到的前进块类型白送 1 个保底供应(那正是制造"意外近道"的元凶)。
-  3: { lenMin: 8, lenMax: 10, types: ['fwd2', 'fwd3', 'skip', 'back1'], targetMode: 'mid', requireType: 'back1', minDecoys: 1, noBaselineExtras: true, noForwardShortcut: true },
+  3: { lenMin: 8, lenMax: 10, types: ['fwd2', 'fwd3', 'jump3', 'back1'], targetMode: 'mid', requireType: 'back1', minDecoys: 1, noBaselineExtras: true, noForwardShortcut: true },
 };
 
 const FALLBACK_LEVELS = {
   1: { length: 5, target: 4, types: ['fwd2', 'fwd3'], supply: { fwd2: 3, fwd3: 1 } },
-  2: { length: 7, target: 6, types: ['fwd2', 'fwd3', 'skip'], supply: { fwd2: 2, fwd3: 1, skip: 1 } },
-  3: { length: 9, target: 5, types: ['fwd2', 'fwd3', 'skip', 'back1'], supply: { fwd2: 0, fwd3: 2, skip: 0, back1: 1 } },
+  2: { length: 7, target: 6, types: ['fwd2', 'fwd3', 'jump3'], supply: { fwd2: 2, fwd3: 1, jump3: 1 } },
+  3: { length: 9, target: 5, types: ['fwd2', 'fwd3', 'jump3', 'back1'], supply: { fwd2: 0, fwd3: 2, jump3: 0, back1: 1 } },
 };
 
 function randInt(n) { return Math.floor(Math.random() * n); }
@@ -140,37 +141,44 @@ function cloneFallback(levelNum) {
   return { length: f.length, target: f.target, types: f.types.slice(), supply, optimalHops };
 }
 
-function generateLevel(levelNum) {
-  const cfg = LEVEL_CONFIG[levelNum] || LEVEL_CONFIG[1];
-  for (let attempt = 0; attempt < 300; attempt++) {
-    const length = cfg.lenMin + randInt(cfg.lenMax - cfg.lenMin + 1);
-    let target;
-    if (cfg.targetMode === 'mid') {
-      const minT = 3, maxT = length - 4;
-      if (maxT < minT) continue;
-      target = minT + randInt(maxT - minT + 1);
-    } else {
-      target = length - 1;
-    }
-    const solution = buildSolutionChain(target, length, cfg.types, cfg.targetMode === 'mid');
-    if (!solution || solution.length < 2) continue;
-    if (cfg.requireType && !solution.some((s) => s.type === cfg.requireType)) continue;
-    const usedCells = new Set(solution.map((s) => s.index));
-    const decoys = length - usedCells.size - 1;
-    if (decoys < cfg.minDecoys) continue;
-    const supply = buildSupply(solution, cfg.types, cfg.noBaselineExtras);
-    const optimalHops = bfsOptimalHops(length, target, supply, cfg.types);
-    if (optimalHops == null || optimalHops < 2 || optimalHops > MAX_HOPS) continue;
-    if (cfg.noForwardShortcut) {
-      // 只用正向位移块(排除 back1)算一遍最短块数;如果它能追平或超过"完整方案"的最优块数,
-      // 说明这一局根本不需要后退+冲过头也能拿到满星,没体现出 L3 的教学点,重新生成。
-      const fwdTypes = cfg.types.filter((t) => BLOCK_DEFS[t].delta > 0);
-      const fwdOnlyHops = bfsOptimalHops(length, target, supply, fwdTypes);
-      if (fwdOnlyHops != null && fwdOnlyHops <= optimalHops) continue;
-    }
-    return { length, target, types: cfg.types.slice(), supply, optimalHops };
+export function generateLevel(levelNum, suppliedRand = null) {
+  const mission = Math.max(1, Math.min(10, Number(levelNum) || 1));
+  const maps = [
+    { length: 7, target: 6, pits: [], types: ['fwd2', 'fwd3'], supply: { fwd2: 3, fwd3: 2 }, requiredAction: null },
+    { length: 9, target: 8, pits: [], types: ['fwd2', 'fwd3'], supply: { fwd2: 4, fwd3: 3 }, requiredAction: null },
+    { length: 12, target: 11, pits: [], types: ['fwd2', 'fwd3'], supply: { fwd2: 3, fwd3: 4 }, requiredAction: null },
+    { length: 10, target: 9, pits: [1], types: ['fwd2', 'fwd3', 'jump3'], supply: { fwd2: 2, fwd3: 2, jump3: 2 }, requiredAction: 'jump3' },
+    { length: 13, target: 12, pits: [3, 4], types: ['fwd2', 'fwd3', 'jump3'], supply: { fwd2: 4, fwd3: 2, jump3: 2 }, requiredAction: 'jump3' },
+    { length: 16, target: 15, pits: [4, 5, 10, 11], types: ['fwd2', 'fwd3', 'jump3'], supply: { fwd2: 2, fwd3: 3, jump3: 2 }, requiredAction: 'jump3' },
+    { length: 9, target: 5, pits: [4], types: ['fwd3', 'jump3', 'back1'], supply: { fwd3: 2, jump3: 1, back1: 1 }, requiredAction: 'back1' },
+    { length: 12, target: 8, pits: [7], types: ['fwd3', 'jump3', 'back1'], supply: { fwd3: 3, jump3: 2, back1: 1 }, requiredAction: 'back1' },
+    { length: 15, target: 11, pits: [10], types: ['fwd3', 'jump3', 'back1'], supply: { fwd3: 4, jump3: 2, back1: 1 }, requiredAction: 'back1' },
+    { length: 20, target: 15, pits: [12, 13], types: ['fwd2', 'fwd3', 'jump3', 'back1'], supply: { fwd2: 3, fwd3: 4, jump3: 2, back1: 1 }, requiredAction: 'back1' },
+  ];
+  const chosen = maps[mission - 1];
+  const result = { ...chosen, pits: chosen.pits.slice(), types: chosen.types.slice(), supply: { ...chosen.supply } };
+  // Each URL variant gets a deterministic inventory calibration. It is kept
+  // only when the authoritative solver proves the mission and its required
+  // teaching action still cannot be bypassed.
+  if (suppliedRand?.pick) {
+    const candidateType = suppliedRand.pick(result.types);
+    const before = result.supply[candidateType] || 0;
+    result.supply[candidateType] = before + 1;
+    const variantRoute = solveRaceRoute(result);
+    const variantBypass = result.requiredAction
+      ? solveRaceRoute({ ...result, types: result.types.filter((type) => type !== result.requiredAction), requiredAction: null })
+      : null;
+    if (!variantRoute || variantBypass) result.supply[candidateType] = before;
   }
-  return cloneFallback(levelNum);
+  const solution = solveRaceRoute(result);
+  if (!solution) throw new Error(`Race L${mission} has no verified route`);
+  if (result.requiredAction) {
+    const bypass = solveRaceRoute({ ...result, types: result.types.filter((type) => type !== result.requiredAction), requiredAction: null });
+    if (bypass) throw new Error(`Race L${mission} can bypass required ${result.requiredAction}`);
+  }
+  result.optimalHops = solution.hops;
+  result.optimalPath = solution.path;
+  return result;
 }
 
 /* -------------------------------------------------------------------------
@@ -184,12 +192,12 @@ function injectStylesOnce() {
   style.textContent = `
     .race-stage-card { display:flex; flex-direction:column; }
     .race-scene-outer {
-      flex:1; max-height:46vh; position:relative; border-radius: var(--radius-md); overflow:hidden;
+      flex:1; max-height:46vh; position:relative; border-radius: var(--radius-md); overflow-x:auto; overflow-y:hidden;
       display:flex; align-items:center; justify-content:center;
       background: linear-gradient(180deg, #FFF7E8 0%, #EAF3DE 48%, #CBE6C4 100%);
       padding: 22px 0 6px;
     }
-    .race-scene-inner { position:relative; width:100%; }
+    .race-scene-inner { position:relative; width:100%; min-width:calc(var(--race-cells,12) * 58px); }
     .race-scene-inner > svg:first-child { width:100%; height:auto; display:block; position:relative; z-index:0; }
     .race-trail-svg { position:absolute; inset:0; width:100%; height:100%; z-index:1; pointer-events:none; }
     .race-trail-path { fill:none; stroke:#F5C518; stroke-width:4; stroke-dasharray:2 10; stroke-linecap:round; opacity:0; animation: race-trail-fade-in .3s ease forwards; }
@@ -220,6 +228,7 @@ function injectStylesOnce() {
       border-radius:6px; padding:0 5px; line-height:1.5; pointer-events:none;
     }
     .race-cell-empty { width:68%; height:50%; border:2.5px dashed var(--ink-300); border-radius:10px; }
+    .race-cell-pit { width:78%; height:56%; border-radius:9px; background:repeating-linear-gradient(135deg,#1A2030 0 8px,#FFB000 8px 16px); box-shadow:inset 0 0 0 3px #111; display:flex; align-items:center; justify-content:center; color:#fff; font-size:10px; font-weight:900; }
     .race-block-chip {
       width:80%; height:60%; border-radius:10px; display:flex; flex-direction:column;
       align-items:center; justify-content:center; color:#fff; font-weight:800;
@@ -323,7 +332,7 @@ function buildDOM(container) {
     <div class="race-layout">
       <div class="brick-card brick-card--cat-race race-stage-card">
         <div class="flex-between flex-wrap gap-2" style="margin-bottom:2px;">
-          <h2 class="title-md" style="margin:0;">🏁 机关轨道</h2>
+          <h2 class="title-md" style="margin:0;">CHAIN REACTION / 机关轨道</h2>
           <div class="text-muted title-sm" id="race-status">把指令块拖到轨道格上，接力带机器人到目标！</div>
         </div>
         <div class="race-scene-outer">
@@ -333,12 +342,12 @@ function buildDOM(container) {
       <div class="race-controls">
         <div class="brick-card brick-card--blue race-tray-card">
           <div class="flex-between flex-wrap gap-2" style="margin-bottom:4px;">
-            <div class="title-sm">积木仓库（数量有限，用完就没啦）</div>
-            <div class="text-muted" style="font-size:11.5px;">落空格=停机 · 落目标=胜利 · &gt;15步=打转</div>
+            <div class="title-sm">COMMAND INVENTORY / 指令库存</div>
+            <div class="text-muted" style="font-size:11.5px;">断轨只能跳过 · 落目标=胜利 · &gt;24步=打转</div>
           </div>
           <div class="race-tray" id="race-tray"></div>
         </div>
-        <div class="flex-center race-run-row">
+        <div class="flex-center race-run-row game-action-dock">
           <button id="race-run-btn" class="brick-btn brick-btn--green brick-btn--lg">▶ 运行程序</button>
         </div>
       </div>
@@ -348,14 +357,15 @@ function buildDOM(container) {
 
 function renderScene() {
   const sceneEl = containerRef.querySelector('#race-scene-inner');
+  sceneEl.style.setProperty('--race-cells', String(level.length));
   const tilesArr = new Array(level.length).fill(null);
   tilesArr[level.target] = 'green';
   const W = trackWidth(level.length);
   sceneEl.innerHTML = `
     ${trackScene({ tiles: tilesArr })}
     <svg class="race-trail-svg" id="race-trail-svg" viewBox="0 0 ${W} ${VBH}" xmlns="http://www.w3.org/2000/svg"></svg>
-    <div class="race-flag-label" style="left:${pct(trackCellX(0), W)}%;">🚩 起点</div>
-    <div class="race-flag-label" style="left:${pct(trackCellX(level.target), W)}%;">🎯 目标</div>
+    <div class="race-flag-label" style="left:${pct(trackCellX(0), W)}%;">START</div>
+    <div class="race-flag-label" style="left:${pct(trackCellX(level.target), W)}%;">TARGET</div>
     <div class="race-rover-pos" id="race-rover-pos" style="left:${pct(trackCellX(0), W)}%;">
       <div class="race-rover-rot" id="race-rover-rot">${roverTop({ face: 'happy' })}</div>
     </div>
@@ -368,14 +378,15 @@ function renderScene() {
   for (let i = 0; i < level.length; i++) {
     const slot = document.createElement('div');
     const isTarget = i === level.target;
-    slot.className = 'race-cell-slot no-select' + (isTarget ? '' : ' race-cell-slot--active');
+    const isPit = level.pits.includes(i);
+    slot.className = 'race-cell-slot no-select' + (isTarget || isPit ? '' : ' race-cell-slot--active');
     slot.style.left = pct(TX + i * SEG, W) + '%';
     slot.style.width = pct(SEG - 3, W) + '%';
     slot.style.top = pct(TY, VBH) + '%';
     slot.style.height = pct(TH, VBH) + '%';
     slot.dataset.index = String(i);
     slot.addEventListener('pointerdown', (ev) => {
-      if (running || isTarget) return;
+      if (running || isTarget || isPit) return;
       if (ev.target.closest('.race-delete-x')) return;
       const type = cellBlocks[i];
       if (type) {
@@ -419,6 +430,13 @@ function renderCells() {
     if (!slot) continue;
     slot.innerHTML = `<span class="race-cell-badge">${i}</span>`;
     if (i === level.target) continue;
+    if (level.pits.includes(i)) {
+      const pit = document.createElement('div');
+      pit.className = 'race-cell-pit';
+      pit.textContent = '断轨';
+      slot.appendChild(pit);
+      continue;
+    }
     const type = cellBlocks[i];
     if (type) {
       const def = BLOCK_DEFS[type];
@@ -450,12 +468,16 @@ function renderCells() {
  * ------------------------------------------------------------------------- */
 function placeArmedAt(index) {
   if (!armed) return;
-  if (index === level.target) return;
+  if (index === level.target || level.pits.includes(index)) return;
   if (cellBlocks[index]) { rejectShake(index); return; }
   if (armed.kind === 'tray') {
-    if (level.supply[armed.type] <= 0) { armed = null; refreshUI(); return; }
-    level.supply[armed.type] -= 1;
-    cellBlocks[index] = armed.type;
+    const placement = tryPlaceRaceBlock({
+      cellBlocks, supply: level.supply, index, type: armed.type,
+      target: level.target, pits: level.pits,
+    });
+    if (!placement.ok) { rejectShake(index); return; }
+    cellBlocks = placement.cellBlocks;
+    level.supply = placement.supply;
   } else if (armed.kind === 'cell') {
     cellBlocks[armed.index] = null;
     cellBlocks[index] = armed.type;
@@ -559,7 +581,7 @@ function onPointerMove(ev) {
   cellSlotEls.forEach((s) => { if (s) s.classList.remove('race-cell-slot--drop-ok', 'race-cell-slot--reject-hover'); });
   drag.hoveredIndex = hovered;
   if (hovered != null) {
-    const occupied = hovered === level.target || (!!cellBlocks[hovered] && !(drag.kind === 'cell' && drag.index === hovered));
+    const occupied = hovered === level.target || level.pits.includes(hovered) || (!!cellBlocks[hovered] && !(drag.kind === 'cell' && drag.index === hovered));
     const slot = cellSlotEls[hovered];
     if (slot) slot.classList.add(occupied ? 'race-cell-slot--reject-hover' : 'race-cell-slot--drop-ok');
   }
@@ -574,13 +596,17 @@ function resolveDrop(session, hoveredIndex) {
     }
     return;
   }
-  if (hoveredIndex === level.target) { rejectShake(hoveredIndex); return; }
+  if (hoveredIndex === level.target || level.pits.includes(hoveredIndex)) { rejectShake(hoveredIndex); return; }
   const occupied = !!cellBlocks[hoveredIndex] && !(session.kind === 'cell' && session.index === hoveredIndex);
   if (occupied) { rejectShake(hoveredIndex); return; }
   if (session.kind === 'tray') {
-    if (level.supply[session.type] <= 0) return;
-    level.supply[session.type] -= 1;
-    cellBlocks[hoveredIndex] = session.type;
+    const placement = tryPlaceRaceBlock({
+      cellBlocks, supply: level.supply, index: hoveredIndex, type: session.type,
+      target: level.target, pits: level.pits,
+    });
+    if (!placement.ok) { rejectShake(hoveredIndex); return; }
+    cellBlocks = placement.cellBlocks;
+    level.supply = placement.supply;
   } else if (session.kind === 'cell') {
     cellBlocks[session.index] = null;
     cellBlocks[hoveredIndex] = session.type;
@@ -751,6 +777,7 @@ async function runProgram() {
   await wait(220);
 
   let pos = 0, hops = 0;
+  const usedActions = [];
   while (!destroyed) {
     const type = cellBlocks[pos];
     if (!type) break; // 安全兜底,理论上只会发生在起点未配置时(已在函数开头拦截)
@@ -760,13 +787,19 @@ async function runProgram() {
     setExecutingHighlight(pos, false);
 
     const delta = BLOCK_DEFS[type].delta;
-    const nextPos = pos + delta;
+    const moveVerdict = judgeRaceMove({ action: type, from: pos, length: level.length, pits: level.pits });
+    const nextPos = moveVerdict.to;
     hops++;
+    usedActions.push(type);
 
-    if (nextPos < 0 || nextPos >= level.length) {
+    if (!moveVerdict.ok) {
       setRoverFace('oops');
-      statusEl.textContent = '指令想把机器人送出轨道外，程序停机了！调整一下指令块，再试试。';
-      apiRef.fail('off-track');
+      statusEl.textContent = moveVerdict.reason === 'pit-crossing'
+        ? '普通前进不能越过断轨！请在断轨前使用紫色跳跃积木。'
+        : moveVerdict.reason === 'pit-landing'
+          ? '机器人落进断轨了！跳跃的落点必须是安全格。'
+          : '指令想把机器人送出轨道外，程序停机了！';
+      apiRef.fail(moveVerdict.reason);
       break;
     }
 
@@ -777,6 +810,14 @@ async function runProgram() {
     pos = nextPos;
 
     if (pos === level.target) {
+      if (level.requiredAction && !usedActions.includes(level.requiredAction)) {
+        setRoverFace('oops');
+        statusEl.textContent = level.requiredAction === 'back1'
+          ? '这关必须先越过目标，再用后退 1 格精准返回。'
+          : '这关必须使用跳跃指令越过断轨。';
+        apiRef.fail('required-action-missing');
+        break;
+      }
       setRoverFace('happy');
       apiRef.sfx.success();
       const diff = hops - level.optimalHops;
@@ -815,7 +856,7 @@ async function runProgram() {
 export default {
   id: 'race',
   title: '机关轨道',
-  icon: '🏁',
+  icon: '⇥',
 
   init(container, api) {
     injectStylesOnce();
@@ -833,8 +874,8 @@ export default {
     // 不用碰共享的 game.css），配合上面 .race-layout 更松的 gap 把余下留白分摊到各段间距里。
     container.style.justifyContent = 'flex-start';
 
-    const lvl = (api.level === 2 || api.level === 3) ? api.level : 1;
-    level = generateLevel(lvl);
+    const lvl = Math.max(1, Math.min(10, Number(api.level) || 1));
+    level = generateLevel(lvl, api.rand);
     cellBlocks = new Array(level.length).fill(null);
     angleDeg = 90;
 
@@ -855,7 +896,14 @@ export default {
       window.__lsfaRace = {
         get level() { return level; },
         get cellBlocks() { return cellBlocks; },
-        placeAt(index, type) { cellBlocks[index] = type; level.supply[type] = Math.max(0, level.supply[type] - 1); refreshUI(); },
+        placeAt(index, type) {
+          const placement = tryPlaceRaceBlock({ cellBlocks, supply: level.supply, index, type, target: level.target, pits: level.pits });
+          if (!placement.ok) return false;
+          cellBlocks = placement.cellBlocks;
+          level.supply = placement.supply;
+          refreshUI();
+          return true;
+        },
         run() { return runProgram(); },
       };
     }

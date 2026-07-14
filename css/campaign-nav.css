@@ -1,0 +1,64 @@
+/* Every lab level is a real route, not a decorative score tile. */
+.mission-level-link {
+  position: relative;
+  flex: 1;
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: #f4f7fb;
+  color: var(--ink);
+  text-align: center;
+  transition: .18s ease;
+}
+
+.mission-level-link:hover,
+.mission-level-link:focus-visible {
+  border-color: var(--blue);
+  background: #edf4ff;
+  box-shadow: 0 7px 18px rgba(39,120,255,.16);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.mission-level-link.is-locked {
+  cursor: not-allowed;
+  opacity: .48;
+  filter: grayscale(.7);
+}
+
+.mission-level-link.is-locked:hover {
+  border-color: transparent;
+  background: #f4f7fb;
+  box-shadow: none;
+  transform: none;
+}
+
+.mission-level-link .level-lock {
+  display: block;
+  margin-top: 3px;
+  color: #7a889a;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.mission-launch {
+  min-height: 44px;
+  align-items: center;
+}
+
+.mission-levels--ten {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mission-levels--ten .mission-level-link {
+  min-width: 0;
+  min-height: 46px;
+  padding: 6px 3px;
+}
+
+.mission-levels--ten .stars i { width: 5px; height: 5px; }

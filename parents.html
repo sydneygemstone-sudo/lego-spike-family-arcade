@@ -3,93 +3,101 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>家长角落 · LEGO SPIKE Family Arcade</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%B1%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#07152d">
+<title>家长控制室 · SPIKE 星舰学院</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2307152d'/%3E%3Cpath d='M17 32h30M32 17v30' stroke='%2367e7ff' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/design-system.css">
 <link rel="stylesheet" href="css/parents.css">
+<link rel="stylesheet" href="css/touch-fixes.css">
 </head>
 <body>
-<div class="page-shell">
+<div class="parents-shell">
 
   <header class="parents-header">
-    <a href="index.html" class="brick-btn brick-btn--gray brick-btn--sm">← 首页</a>
-    <h1 class="title-xl" style="margin:0;">家长角落</h1>
+    <a href="index.html" class="parents-back">← <span>任务地图</span></a>
+    <div class="parents-brand"><i></i> PARENT MISSION GUIDE</div>
+    <span class="parents-local">本地运行 · 无需登录</span>
   </header>
 
-  <section class="brick-card brick-card--blue parents-intro">
-    <p>这里是给家长看的说明区——孩子的主界面不会出现这个入口以外的任何内容。</p>
-    <p>这个网站完全跑在孩子的 iPad 本地浏览器里：不需要登录、不上传任何数据、也没有广告，闯关进度只保存在这台设备的本地存储里。六个关卡把 LEGO SPIKE Prime 的编程逻辑（拖积木、排指令、按 ▶ 运行）设计成孩子自己就能独立完成的小游戏，配合下面这份研究报告，说明了为什么"动手编程"对孩子（尤其是专注力/执行功能仍在发展中的孩子）特别有帮助。</p>
+  <section class="parents-intro">
+    <div class="parents-intro-copy"><span>家长控制室 · 01</span><h1>让孩子像程序员一样<br>计划、运行、再修改</h1><p>这是一份家庭主持指南。用清楚的规则、可见的步骤和低压力反馈，把抽象编程变成共同完成的任务。</p></div>
+    <div class="parents-safety"><b>使用边界</b><p>本产品是教育与家庭互动工具，不是医疗建议、诊断或治疗方案。体感活动开始前由成人清场；不闭眼走动、不跑跳、不推拉、不做负重支撑。</p></div>
   </section>
 
   <article class="research-article">
-    <h1>编程的力量：基于 Lego Spike Prime 的物理编程对 ADHD 儿童执行功能的康复训练研究</h1>
+    <header class="article-lead"><span>FIELD MANUAL</span><h1>把编程步骤变成家庭游戏</h1><p>不需要先懂代码。家长只负责读规则、按开始、观察过程；答案留给孩子通过运行和 Debug 找出来。</p></header>
 
-    <h2>1. 前言：ADHD 儿童的核心挑战——执行功能受损</h2>
-    <p>注意力缺陷多动障碍（ADHD）的神经病理学机制主要涉及大脑额叶（Prefrontal Cortex）发育迟缓以及多巴胺/去甲肾上腺素系统的失调。临床表现虽然有"多动"、"分心"、"冲动"，但其深层认知根源在于<strong>执行功能（Executive Function, EF）</strong>的受损。</p>
-    <p>执行功能是人类大脑的"中央处理器"，主要由以下三个核心认知成分组成：</p>
+    <section class="brick-card brick-card--yellow">
+      <h2 style="margin-top:0;">使用边界</h2>
+      <p>这套材料是教育与家庭互动工具，尚未经过临床研究验证，不能用于诊断、治疗或康复，也不能替代医生、心理师、教师或其他专业人员的个别建议。若孩子已经确诊 ADHD、正在接受治疗，或在情绪、学习、睡眠、冲动控制方面持续遇到困难，请与合格的医疗和教育专业人员讨论适合孩子的支持方式。</p>
+      <p><strong>每次开始前：</strong>成人移开桌角、玩具、线缆和易滑物，确认孩子穿着合适并保留伸手空间。任何动作都可以改成坐姿低冲击版本：用拍腿、举手、手掌转向或在桌面移动小模型代替身体走动。孩子说停、出现疼痛、头晕、疲劳或情绪不适时立即结束。</p>
+    </section>
+
+    <h2>1. 这套游戏练习什么</h2>
+    <p>孩子在编程和家庭游戏中会反复遇到三类日常能力：</p>
     <ul>
-      <li><strong>工作记忆（Working Memory）</strong>：在大脑中临时存储并加工信息的能力。</li>
-      <li><strong>抑制控制（Inhibitory Control）</strong>：抑制冲动、抵制分心，以及在行动前进行思考的能力。</li>
-      <li><strong>认知灵活性（Cognitive Flexibility）</strong>：在环境变化时灵活调整策略、纠正错误的能力。</li>
+      <li><strong>记住并安排步骤</strong>：把一个目标拆成可以执行的小步骤。</li>
+      <li><strong>先看、再做</strong>：等待启动信号，运行前检查顺序。</li>
+      <li><strong>发现错误后换一种办法</strong>：把“失败”当成可以定位和修改的 Bug。</li>
     </ul>
-    <p>当这些功能受损时，ADHD 儿童表现为"做事丢三落四"、"无法遵守多步骤指令"、"遇到挫折极易情绪崩溃"、"行事冲动不顾后果"。</p>
-    <p>本研究旨在探讨如何将 <strong>Lego Spike Prime 的 Scratch 编程逻辑</strong>转化为<strong>无屏（Screen-free）的家庭物理编程互动游戏</strong>，作为一种低认知负荷、高参与度的行为干预手段，系统性地训练 ADHD 儿童的上述三项核心执行功能。</p>
+    <p>这些能力常被归入执行功能，但本材料不承诺改善任何医学症状。它提供的是一个低门槛的练习场景，让家长能观察孩子如何规划、执行和调整。</p>
 
     <hr>
 
-    <h2>2. 为什么是"物理编程"？相比电子屏幕的优势</h2>
-    <p>在电子屏幕（电脑、平板）上进行编程虽然能够锻炼逻辑，但对 ADHD 儿童存在以下潜在风险：</p>
+    <h2>2. 为什么把屏幕和实体活动搭配使用</h2>
+    <p>网页游戏适合即时反馈；纸质闪卡、积木和身体移动则把抽象指令变成可以拿起、移动和重新排列的对象。两种方式可以交替使用：</p>
     <ul>
-      <li><strong>过度刺激</strong>：屏幕的高频蓝光和软件界面的高饱和色彩会引起多巴胺的爆发性分泌，虽然能让孩子暂时"专注"，但容易导致撤离屏幕后的焦躁、注意力反弹和成瘾。</li>
-      <li><strong>具象思维的缺失</strong>：ADHD 儿童需要更强烈的感官反馈。屏幕上的积木块是二维的，缺乏空间实体感。</li>
-    </ul>
-    <p><strong>物理编程（Physical Coding）</strong>通过纸质或实体积木闪卡，将虚拟的代码序列具象化。它具有以下认知学优势：</p>
-    <ul>
-      <li><strong>多感官协同（Multi-sensory Learning）</strong>：结合了视觉（卡片上的颜色分类与积木图标）、触觉（抓取、拼摆卡片）和动觉（身体模拟机器人行走）。</li>
-      <li><strong>空间映射（Spatial Mapping）</strong>：在客厅的物理三维空间中执行程序，能更有效地激活大脑的顶叶（Parietal Lobe），促进空间认知和本体感觉（Proprioception）的发育。</li>
-    </ul>
-
-    <hr>
-
-    <h2>3. 核心游戏设计的行为学干预机制</h2>
-
-    <h2>3.1 游戏一：网格寻宝（Grid Treasure Hunt）与工作记忆的"外部化"</h2>
-    <p><strong>游戏过程</strong>：家长在地板上用积木或贴纸设定起点、终点和障碍物。孩子利用物理卡片（Move Forward, Turn Left, Turn Right）在桌上排列成一串指令序列。排好后，孩子闭上眼睛，由家长读卡，孩子像机器人一样移动。</p>
-    <p><strong>认知学解析</strong>：</p>
-    <ul>
-      <li><strong>工作记忆外部化（Externalizing Working Memory）</strong>：工作记忆受损的儿童在大脑中进行多步骤规划时，容易因"缓存溢出"而漏掉步骤或感到极度疲劳。物理闪卡将"无形"的规划过程变成了"有形"的视觉实体。卡片充当了孩子大脑的"外部硬盘"，让他们能专注于路径推导，降低了认知负荷。</li>
-      <li><strong>运动觉编码（Kinesthetic Encoding）</strong>：孩子用身体去执行指令（比如前行三步，左转），可以将空间逻辑深度内化到肌肉记忆中。</li>
-    </ul>
-
-    <h2>3.2 游戏二：抓娃娃机（Claw Machine Master）与抑制控制的强化</h2>
-    <p><strong>游戏过程</strong>：模拟机械臂抓取物品。引入精确参数，如"手臂偏航角旋转 90 度"、"手臂下降 2 圈"、"五指收拢用 5 牛顿力"。孩子扮演机械臂，家长扮演编程器。程序启动后，孩子必须极其精确地控制身体旋转角度和手部力量。</p>
-    <p><strong>认知学解析</strong>：</p>
-    <ul>
-      <li><strong>抑制冲动（Inhibitory Control）</strong>：ADHD 儿童往往急于拿到物品而直接用手抓取（冲动反应）。该游戏强制要求动作必须分解为"旋转角度 -&gt; 垂直下降 -&gt; 精确圈数 -&gt; 握紧力"，并且每一步必须等待"执行信号"。这种精细的动作分步执行，能强力激活大脑的运动抑制区，训练孩子"先谋后动"。</li>
-      <li><strong>绝对与相对认知</strong>：区分"转到 90 度"（绝对位置）和"再转动 90 度"（相对位置），有助于培养严密的数学逻辑和多维度空间参考系。</li>
-    </ul>
-
-    <h2>3.3 游戏三：口诀大师（Action Macro Master）与认知灵活性、组块化训练</h2>
-    <p><strong>游戏过程</strong>：孩子与家长创造自定义的"宏指令（My Blocks）"，比如定义口诀 <code>Define [Dodge] = Step Forward -&gt; Squat -&gt; Step Backward</code>。在规划路径时，孩子可以直接使用一张 <code>[Dodge]</code> 闪卡来代替这一连串动作。</p>
-    <p><strong>认知学解析</strong>：</p>
-    <ul>
-      <li><strong>信息组块化（Chunking）</strong>：工作记忆的容量是有限的（正常人约为 7±2 个信息块，ADHD 儿童更少）。通过将 3 个具体动作压缩为一个"Dodge"口诀，孩子的大脑在宏观规划时只需占用一个工作记忆单元。这有助于训练前额叶的概括与抽象思维。</li>
-      <li><strong>认知转换（Cognitive Shifting）</strong>：当需要在不同口诀之间切换执行时，能锻炼大脑的认知转换灵活性，减少转换损耗。</li>
+      <li><strong>先在网页里理解规则</strong>：拖动积木、排列指令、按 ▶ 运行。</li>
+      <li><strong>再用实体卡片复现</strong>：把程序摊在桌上，逐步检查。</li>
+      <li><strong>最后让身体或 LEGO 模型执行</strong>：观察结果，找出与计划不一致的位置。</li>
     </ul>
 
     <hr>
 
-    <h2>4. 挫折耐受力与 Debug 精神：构建成长型思维</h2>
-    <p>ADHD 儿童在面对"失败"时，前额叶的情绪抑制能力较弱，极易产生崩溃、哭闹或放弃等过度情绪反应。物理编程游戏将"失败"重构为<strong>"Bug（程序漏洞）"</strong>，这在心理学上是一种极佳的<strong>认知重构（Cognitive Reframing）</strong>：</p>
+    <h2>3. 按一次家庭时间选择入口</h2>
+    <p>现在的产品分成三条完整路径。第一次使用不必从头到尾全部完成，先按可用时间和孩子状态选择一条：</p>
+    <table>
+      <thead><tr><th>入口</th><th>适合什么时候</th><th>一次怎么玩</th></tr></thead>
+      <tbody>
+        <tr><td><strong>编程任务</strong></td><td>孩子愿意在 iPad 上专注操作</td><td>选一关，先预测，再拖积木、运行、Debug</td></tr>
+        <tr><td><strong>全家游戏</strong></td><td>想离开屏幕一起互动</td><td>家长打开一张主持卡，照着安全规则完成一局</td></tr>
+        <tr><td><strong>闪卡小测验</strong></td><td>只有 3–5 分钟，想快速复习</td><td>选择启蒙或进阶，连续完成三道题并读解释</td></tr>
+      </tbody>
+    </table>
+
+    <h2>3.1 编程任务：一款主线游戏与五个实验室</h2>
+    <p><strong>网格寻宝</strong>是主线，共十个逐步增加机制的任务：路线、障碍、传送门、限步和评分都会变化。让孩子在运行前说出预计路线；走错后只检查第一处与预测不同的步骤。</p>
+    <p>另外五个三关实验室分别练习不同思路：<strong>抓娃娃机</strong>比较重量、软硬和夹力；<strong>口诀大师</strong>把重复步骤封装成 My Block；<strong>机关轨道</strong>用前进、后退和跳跃编排接力；<strong>流水线密码</strong>寻找能覆盖长序列的重复单元；<strong>精准度桥</strong>在圈数、轮径、换轮与能耗约束下完成工程方案。</p>
+    <p><strong>家长只做三件事</strong>：请孩子先预测；让孩子自己按运行；成功或失败后追问“哪一步和你刚才想的不一样？”不要替孩子拖最后一块积木。</p>
+
+    <h2>3.2 全家游戏：六张可直接主持的任务卡</h2>
     <ul>
-      <li><strong>无罪化失败</strong>：在编程世界中，Bug 是代码运行的客观必然，没有任何贬义色彩。程序走错了不代表"我很笨"，而是"我的代码里有个 Bug 还没找出来"。</li>
-      <li><strong>主动 Debug（除错）</strong>：孩子通过对比身体移动轨迹与物理卡片序列，能够自主发现"噢，在第三步我多放了一个 Forward，或者转错方向了"。这种通过微调卡片来修正行为的过程，能显著提升孩子的自监控能力（Self-Monitoring）和挫折耐受力，逐步建立成长型思维（Growth Mindset）。</li>
+      <li><strong>人体机器人</strong>：把口令拆成清楚步骤；可全程用坐姿手势完成。</li>
+      <li><strong>客厅寻宝</strong>：在桌面五乘五网格移动模型，不让孩子闭眼或在房间里穿行。</li>
+      <li><strong>节奏序列</strong>：听完或看完一组安全动作，再按统一启动信号复现。</li>
+      <li><strong>宏指令口诀</strong>：把两组动作命名，再用宏名调用，训练分组和复用。</li>
+      <li><strong>如果—那么</strong>：根据条件选择动作，先说条件再执行结果。</li>
+      <li><strong>人体流水线</strong>：多人或单人轮流处理桌面物件，用计数和规则检查结果。</li>
+    </ul>
+    <p>每张卡都提供成人清场提醒与低冲击替代。孩子不想做身体动作时，直接改成拍腿、举手、翻卡或移动桌面模型，不降低完成价值。</p>
+
+    <h2>3.3 闪卡小测验：三题完成一次复习</h2>
+    <p><strong>启蒙</strong>偏重概念识别，<strong>进阶</strong>加入相近选项和实际应用。每轮固定覆盖“认出是什么、分清相近概念、把概念用进场景”三种题型。答错后先读解释再进入下一题，不用追求速度，也不把星级当作能力评价。</p>
+
+    <hr>
+
+    <h2>4. 用 Debug 语言谈论错误</h2>
+    <p>程序没有到达目标时，可以先描述发生了什么，再一起找哪一步与计划不同。避免把运行结果变成对孩子能力的评价：</p>
+    <ul>
+      <li>“机器人在第三步走到了沙发旁，我们看看第三张卡。”</li>
+      <li>“这不是考试；程序员本来就会运行、发现 Bug、再修改。”</li>
+      <li>如果孩子已经疲惫或沮丧，先暂停，不把完成关卡作为必须达到的结果。</li>
     </ul>
 
     <hr>
 
-    <h2>5. 家长协同指导"支架（Scaffolding）"指南</h2>
-    <p>为了让该干预体系发挥最大效果，家长在陪伴游戏时应遵循以下"支架式教学"原则：</p>
+    <h2>5. 家长支架式提问</h2>
+    <p>家长不必马上给答案，可以用问题和可见步骤帮助孩子自己检查：</p>
     <table>
       <thead>
         <tr><th>错误示范（Direct Correcting）</th><th>正确支架示范（Scaffolding Questioning）</th><th>认知学原理</th></tr>
@@ -103,24 +111,30 @@
         <tr>
           <td>"别着急，慢慢做。"</td>
           <td>"在你的机器人出发之前，我们先把所有路线的卡片摆在桌子上。摆好之后，拍一下手，我们再开始启动。"</td>
-          <td><strong>行为抑制锚定（Behavioral Anchoring）</strong>：使用物理动作（拍手）作为启动信号，克制冲动性。</td>
+          <td><strong>统一启动信号</strong>：让计划和执行有清楚边界。</td>
         </tr>
         <tr>
           <td>"你真聪明，一下子就找到了宝藏！"</td>
           <td>"我非常喜欢你刚才把路走错后，仔细检查卡片并把'右转'换成'左转'的那个过程，你是个优秀的程序员！"</td>
-          <td><strong>过程取向强化（Process-Oriented Praise）</strong>：强化 Debug 和纠错的行为，而非结果，减少对失败的恐惧。</td>
+          <td><strong>过程反馈</strong>：具体指出检查、修改和再次尝试的行为。</td>
         </tr>
       </tbody>
     </table>
 
     <hr>
 
-    <h2>6. 结语</h2>
-    <p>基于 Lego Spike Prime 积木逻辑的物理编程，超越了传统冷冰冰的"软件编程"范畴。它通过将高度抽象的逻辑思维外化为家庭物理游戏，将认知行为疗法（CBT）中的"行为实验"与"前瞻性规划训练"寓教于乐。家长不仅是在陪孩子玩游戏，更是在为孩子搭建延缓冲动、扩展记忆、拥抱失败的大脑认知支架。</p>
+    <h2>6. 进一步了解 ADHD 支持</h2>
+    <p>若你在寻找经过验证的 ADHD 支持，请优先与孩子的医疗和教育团队讨论。美国 CDC 的当前资料介绍了按年龄考虑的治疗与支持路径，包括家长行为管理训练、行为治疗、药物和学校支持：</p>
+    <ul>
+      <li><a href="https://www.cdc.gov/adhd/treatment/index.html" target="_blank" rel="noopener">CDC：Treatment of ADHD</a></li>
+      <li><a href="https://www.cdc.gov/adhd/treatment/behavior-therapy.html" target="_blank" rel="noopener">CDC：Parent Training in Behavior Management for ADHD</a></li>
+    </ul>
+    <p>本页只说明如何使用这套家庭编程材料，不对孩子的健康、学习或行为结果作出保证。</p>
   </article>
 
-  <section class="brick-card printable-note">
-    💡 可打印 PDF 版请找 Dean 获取。
+  <section class="printable-note">
+    <span>PRINT FIELD KIT</span><strong>需要离线使用？</strong><p>返回任务地图打开 26 页打印任务包。</p>
+    <a href="assets/pdf/Lego_Spike_Prime_Flashcards_And_Games.pdf" target="_blank" rel="noopener">打开打印包 ↗</a>
   </section>
 
 </div>

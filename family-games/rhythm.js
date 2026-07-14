@@ -5,10 +5,9 @@
  * 协议：export default { id, title, icon, howto, init(container, api), destroy() }。
  */
 
-const LOOP_KEYS = ['clap', 'patlegs', 'stomp', 'jump', 'spin', 'touchear', 'raisehand', 'oneleg'];
+const LOOP_KEYS = ['clap', 'patlegs', 'touchear', 'raisehand', 'freeze'];
 const LOOP_LABEL = {
-  clap: '拍手', patlegs: '拍腿', stomp: '跺脚', jump: '跳', spin: '转圈',
-  touchear: '摸耳', raisehand: '举手', oneleg: '单脚站',
+  clap: '拍手', patlegs: '拍腿', touchear: '摸耳', raisehand: '举手', freeze: '双手停住',
 };
 
 const START_BPM = 76;
@@ -30,15 +29,15 @@ function buildLoop(rand) {
 
 function render(container, api) {
   let cancelled = false;
-  const { Art, rand, sfx, mascot, countdownRing, beat, completeRound } = api;
+  const { Art, rand, sfx, mascot, countdownRing, beat, completeRound, emitFeedback, glyph } = api;
 
   container.innerHTML = `
-    <div class="brick-card brick-card--cat-race">
-      <p class="title-sm" style="margin:0;">🎵 跟着节拍循环做这 4 个动作，每跑完一轮会变快，坚持 4 轮就过关！</p>
+    <div class="brick-card brick-card--cat-race family-brief-card">
+      <p class="title-sm" style="margin:0;">跟着节拍循环做这 4 个动作，每跑完一轮会变快，坚持 4 轮就过关。</p>
     </div>
 
     <div class="brick-card brick-card--cat-race" id="rh-sheet">
-      <p class="title-sm" style="margin:0 0 8px;">🎼 本轮动作循环（从左到右，循环播放）</p>
+      <p class="title-sm" style="margin:0 0 8px;">本轮动作循环 · 从左到右循环播放</p>
       <div class="family-card-row" id="rh-sheet-row"></div>
     </div>
 
@@ -51,9 +50,16 @@ function render(container, api) {
     </div>
 
     <div class="flex-row gap-3" style="justify-content:center; flex-wrap:wrap;">
-      <button class="brick-btn brick-btn--blue brick-btn--lg" id="rh-start-btn">▶ 开始跟拍</button>
-      <button class="brick-btn brick-btn--gray brick-btn--lg" id="rh-stop-btn" style="display:none;">⏸ 停止</button>
-      <button class="brick-btn brick-btn--purple" id="rh-shuffle-btn">🎲 换一套动作</button>
+      <button class="brick-btn brick-btn--blue brick-btn--lg" id="rh-start-btn">开始跟拍</button>
+      <button class="brick-btn brick-btn--gray brick-btn--lg" id="rh-stop-btn" style="display:none;">停止</button>
+      <button class="brick-btn brick-btn--purple" id="rh-shuffle-btn">更换动作</button>
+    </div>
+    <div class="family-judge-panel" id="rh-judge-row" style="display:none;">
+      <strong>主持人判定：四轮都踩在节拍上了吗？</strong>
+      <div class="flex-row gap-3" style="justify-content:center;flex-wrap:wrap;">
+        <button class="brick-btn brick-btn--green brick-btn--lg" id="rh-pass-btn">全部跟上</button>
+        <button class="brick-btn brick-btn--red brick-btn--lg" id="rh-fail-btn">有人掉拍</button>
+      </div>
     </div>
   `;
 
@@ -65,11 +71,15 @@ function render(container, api) {
   const startBtn = container.querySelector('#rh-start-btn');
   const stopBtn = container.querySelector('#rh-stop-btn');
   const shuffleBtn = container.querySelector('#rh-shuffle-btn');
+  const judgeRow = container.querySelector('#rh-judge-row');
+  const passBtn = container.querySelector('#rh-pass-btn');
+  const failBtn = container.querySelector('#rh-fail-btn');
 
   let loopKeys = [];
   let beatHandle = null;
   let loopsDone = 0;
   let running = false;
+  let completed = false;
 
   function renderSheet() {
     sheetRow.innerHTML = loopKeys.map((k, i) => `
@@ -90,7 +100,7 @@ function render(container, api) {
 
   function renderStageIdle() {
     stage.innerHTML = `
-      <div class="family-card-icon" style="width:clamp(64px,14vw,140px);height:clamp(64px,14vw,140px);display:flex;align-items:center;justify-content:center;font-size:clamp(48px,11vw,110px);line-height:1;">🎧</div>
+      <div class="family-card-icon">${glyph('ready')}</div>
       <div class="family-card-text">准备好了吗？</div>
       <div class="family-card-sub">点「开始跟拍」，3 秒后节拍器启动</div>
     `;
@@ -116,28 +126,28 @@ function render(container, api) {
   function newRound() {
     if (beatHandle) beatHandle.stop();
     running = false;
+    completed = false;
     loopKeys = buildLoop(rand);
     renderSheet();
     resetProgress();
     renderStageIdle();
     startBtn.style.display = '';
+    startBtn.textContent = '开始跟拍';
     stopBtn.style.display = 'none';
+    judgeRow.style.display = 'none';
   }
 
-  function finishSuccess() {
+  function requestJudgement() {
     running = false;
     if (beatHandle) beatHandle.stop();
     stage.innerHTML = `
-      <div class="family-card-icon" style="width:clamp(64px,14vw,140px);height:clamp(64px,14vw,140px);display:flex;align-items:center;justify-content:center;font-size:clamp(48px,11vw,110px);line-height:1;">🏆</div>
-      <div class="family-card-text">挑战成功！</div>
-      <div class="family-card-sub">坚持了 ${TOTAL_LOOPS} 轮加速，节奏感满分！</div>
+      <div class="family-card-icon">${glyph('target')}</div>
+      <div class="family-card-text">判定时间！</div>
+      <div class="family-card-sub">只有四轮都跟上节拍，才算真正过关</div>
     `;
-    sfx.success();
-    mascot.say('太厉害了，全家节奏感满分！', 'cheer');
-    startBtn.textContent = '▶ 再玩一次';
-    startBtn.style.display = '';
     stopBtn.style.display = 'none';
-    completeRound();
+    judgeRow.style.display = 'grid';
+    emitFeedback('round', { label: '四轮结束 · 等待主持人判定' });
   }
 
   function startRun() {
@@ -166,7 +176,7 @@ function render(container, api) {
               loopsDone += 1;
               loopNumEl.textContent = String(loopsDone);
               if (loopsDone >= TOTAL_LOOPS) {
-                finishSuccess();
+                requestJudgement();
                 return;
               }
               bpm = bpm * SPEED_UP;
@@ -183,6 +193,7 @@ function render(container, api) {
 
   startBtn.addEventListener('click', () => {
     sfx.click();
+    if (completed) newRound();
     startRun();
   });
   stopBtn.addEventListener('click', () => {
@@ -193,6 +204,27 @@ function render(container, api) {
   });
   shuffleBtn.addEventListener('click', () => {
     sfx.click();
+    newRound();
+  });
+
+  passBtn.addEventListener('click', () => {
+    judgeRow.style.display = 'none';
+    sfx.success();
+    stage.innerHTML = `
+      <div class="family-card-icon">${glyph('trophy')}</div>
+      <div class="family-card-text">节奏通关！</div>
+      <div class="family-card-sub">四轮加速全部命中</div>
+    `;
+    mascot.say('判定通过，四轮节拍都完成了！', 'cheer');
+    completed = true;
+    startBtn.textContent = '再玩一次';
+    startBtn.style.display = '';
+    completeRound();
+  });
+  failBtn.addEventListener('click', () => {
+    sfx.fail();
+    emitFeedback('miss', { label: '掉拍 · 本轮不打卡' });
+    mascot.say('没关系，换慢一点再来一轮！', 'oops');
     newRound();
   });
 
@@ -213,7 +245,7 @@ export default {
   id: 'rhythm',
   title: '节奏程序',
   icon: '🥁',
-  howto: '跟着节拍做 4 个动作的循环，越跑越快，坚持满 4 轮就算过关，练循环+节奏工作记忆！',
+  howto: '坐着跟节拍做拍手、拍腿、摸耳和举手的循环，完成 4 轮后由主持人判定。',
   init(container, api) {
     activeHandle = render(container, api);
   },

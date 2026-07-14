@@ -6,15 +6,14 @@
  * 协议：export default { id, title, icon, howto, init(container, api), destroy() }。
  */
 
-const ACTION_KEYS = ['squat', 'jump', 'spin', 'clap', 'oneleg', 'touchear', 'stomp', 'freeze', 'patlegs', 'raisehand'];
+const ACTION_KEYS = ['clap', 'touchear', 'freeze', 'patlegs', 'raisehand'];
 const ACTION_LABEL = {
-  squat: '蹲下', jump: '跳一下', spin: '转一圈', clap: '拍拍手',
-  oneleg: '单脚站', touchear: '摸摸耳朵', stomp: '跺跺脚',
-  freeze: '定住不动', patlegs: '拍拍腿', raisehand: '举起手',
+  clap: '拍拍手', touchear: '摸摸耳朵', freeze: '双手停住',
+  patlegs: '拍拍腿', raisehand: '举起手',
 };
 // 能"保持几秒"的动作（静态定住/持续重复类），"数秒"要接在这类动作后面才读得通顺；
 // 跳一下/转一圈这种瞬时动作不适合接"保持 N 秒"，所以单独排除。
-const HOLDABLE_KEYS = new Set(['squat', 'oneleg', 'freeze', 'touchear', 'patlegs', 'stomp', 'clap', 'raisehand']);
+const HOLDABLE_KEYS = new Set(['freeze', 'touchear', 'patlegs', 'clap', 'raisehand']);
 
 const JUDGE_LINES_OK = ['太棒了，指令传达得清清楚楚！', '完美同步，编程语言学得真好！', '完全正确，你们是最佳拍档！'];
 const JUDGE_LINES_MISS = ['没关系，再想想怎么说得更精确！', '差一点点，指令要更具体哦！', 'Debug 一下，换个说法再来一次！'];
@@ -56,23 +55,23 @@ function comboText(items) {
 
 function render(container, api) {
   let cancelled = false;
-  const { Art, rand, sfx, mascot, flipCard, roleSwap, completeRound } = api;
+  const { Art, rand, sfx, mascot, flipCard, roleSwap, completeRound, emitFeedback } = api;
 
   container.innerHTML = `
-    <div class="brick-card brick-card--cat-macro">
-      <p class="title-sm" style="margin:0;">🗣️ 描述者拿好 iPad，读题后点「开始指挥」把卡片藏起来！</p>
+    <div class="brick-card brick-card--cat-macro family-brief-card">
+      <p class="title-sm" style="margin:0;">描述者拿好 iPad，读题后点「开始指挥」把卡片藏起来；所有动作都可坐着完成。</p>
     </div>
     <div id="hr-flip-slot"></div>
     <div class="flex-row gap-3" style="justify-content:center; flex-wrap:wrap;">
-      <button class="brick-btn brick-btn--blue brick-btn--lg" id="hr-start-btn">🙈 开始指挥（藏卡片）</button>
-      <button class="brick-btn brick-btn--yellow brick-btn--lg" id="hr-reveal-btn" style="display:none;">🔍 翻面对答案</button>
+      <button class="brick-btn brick-btn--blue brick-btn--lg" id="hr-start-btn">开始指挥 · 藏起卡片</button>
+      <button class="brick-btn brick-btn--yellow brick-btn--lg" id="hr-reveal-btn" style="display:none;">翻面对答案</button>
     </div>
     <div class="flex-row gap-3" id="hr-judge-row" style="justify-content:center; flex-wrap:wrap; display:none;">
-      <button class="brick-btn brick-btn--green brick-btn--lg" id="hr-ok-btn">✅ 全对</button>
-      <button class="brick-btn brick-btn--gray brick-btn--lg" id="hr-miss-btn">🔁 差一点</button>
+      <button class="brick-btn brick-btn--green brick-btn--lg" id="hr-ok-btn">全部命中</button>
+      <button class="brick-btn brick-btn--gray brick-btn--lg" id="hr-miss-btn">差一点 · 再试</button>
     </div>
     <div class="flex-row gap-3" style="justify-content:center;">
-      <button class="brick-btn brick-btn--purple" id="hr-shuffle-btn">🎲 换一组动作卡</button>
+      <button class="brick-btn brick-btn--purple" id="hr-shuffle-btn">更换动作卡</button>
     </div>
     <div class="brick-card brick-card--cat-macro" id="hr-role-card"></div>
   `;
@@ -92,7 +91,7 @@ function render(container, api) {
 
   function backHTML() {
     return `
-      <p class="title-sm" style="margin:0 0 4px; color: var(--lego-orange);">🙈 描述中，执行者别偷看！</p>
+      <p class="title-sm" style="margin:0 0 4px; color: var(--lego-orange);">描述中 · 执行者不要偷看</p>
       <div class="family-card-text">?</div>
       <p class="family-card-sub">描述者只能用嘴说，不能用手比划哦</p>
     `;
@@ -106,7 +105,7 @@ function render(container, api) {
   function frontHTML() {
     const iconPx = currentIconPx();
     return `
-      <p class="title-sm" style="margin:0 0 4px;">📋 动作组合卡（描述者读题）</p>
+      <p class="title-sm" style="margin:0 0 4px;">动作组合卡 · 描述者读题</p>
       <div class="family-card-row" style="flex-wrap:nowrap;">${combo.map((it) => itemIconHTML(Art, it, iconPx)).join('')}</div>
     `;
   }
@@ -159,7 +158,7 @@ function render(container, api) {
   // 角色互换＝换人上场，旧卡描述者已经看过、对新的描述者来说等于泄题，
   // 所以互换必须作废旧卡、发新卡重新回到"读题"阶段，而不是只换一下标签文字。
   const role = roleSwap(roleCard, {
-    roles: ['🗣️ 我是描述者', '🏃 我是执行者'],
+    roles: ['我是描述者', '我是执行者'],
     onSwap() { newRound(); },
   });
 
@@ -169,6 +168,7 @@ function render(container, api) {
     startBtn.style.display = 'none';
     revealBtn.style.display = '';
     mascot.say('执行者做完了吗？做完了就翻面对照吧！', 'idle');
+    emitFeedback('action', { label: '指挥中 · 不能比划' });
   });
 
   revealBtn.addEventListener('click', () => {
@@ -184,6 +184,7 @@ function render(container, api) {
     sfx.success();
     mascot.say(rand.pick(JUDGE_LINES_OK), 'cheer');
     judgeRow.style.display = 'none';
+    emitFeedback('hit', { label: '指令完整命中' });
     completeRound();
   });
   missBtn.addEventListener('click', () => {
@@ -191,7 +192,9 @@ function render(container, api) {
     sfx.fail();
     mascot.say(rand.pick(JUDGE_LINES_MISS), 'oops');
     judgeRow.style.display = 'none';
-    completeRound();
+    flip.toBack();
+    revealBtn.style.display = '';
+    emitFeedback('miss', { label: '没有命中 · 用同一张卡 Debug' });
   });
 
   shuffleBtn.addEventListener('click', () => {
@@ -226,7 +229,7 @@ export default {
   id: 'humanrobot',
   title: '人体机器人',
   icon: '🤖',
-  howto: '描述者看卡指挥（只能说不能比划），执行者照做，做完翻面对答案，两人一起判对错！',
+  howto: '描述者看卡指挥（只能说不能比划），执行者坐着完成拍手、拍腿和举手，做完翻面对答案。',
   init(container, api) {
     activeHandle = render(container, api);
   },

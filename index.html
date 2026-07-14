@@ -3,190 +3,187 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>LEGO SPIKE Family Arcade</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%B1%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#07152d">
+<title>SPIKE 星舰学院</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2307152d'/%3E%3Cpath d='M17 32h30M32 17v30' stroke='%2367e7ff' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/design-system.css">
 <link rel="stylesheet" href="css/index.css">
+<link rel="stylesheet" href="css/campaign-nav.css">
+<link rel="stylesheet" href="css/touch-fixes.css">
 </head>
 <body>
-<div class="page-shell">
-
-  <header class="home-header">
-    <div id="mascot-slot"></div>
-    <div>
-      <h1 class="title-hero">LEGO SPIKE 大冒险</h1>
-      <p class="text-muted" style="margin:0;">拖积木、闯关卡，集星星拿徽章！</p>
+<div class="mission-shell">
+  <header class="mission-hero">
+    <div class="hero-orbit" aria-hidden="true">
+      <svg viewBox="0 0 420 320" role="img">
+        <defs>
+          <linearGradient id="roverBody" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#70e8ff"/><stop offset="1" stop-color="#2288ff"/></linearGradient>
+          <linearGradient id="roverGlass" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#d8fbff"/><stop offset="1" stop-color="#55b8ec"/></linearGradient>
+          <filter id="roverGlow"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <ellipse cx="210" cy="272" rx="152" ry="22" fill="#051127" opacity=".45"/>
+        <path d="M68 238c45-70 229-78 284 0" fill="none" stroke="#72e9ff" stroke-opacity=".2" stroke-width="2" stroke-dasharray="8 9"/>
+        <g transform="translate(62 51)">
+          <path d="M78 73h140c26 0 48 21 48 48v79H30v-79c0-27 22-48 48-48Z" fill="url(#roverBody)" stroke="#bdf7ff" stroke-width="5"/>
+          <path d="M86 28h124c18 0 33 15 33 33v47H53V61c0-18 15-33 33-33Z" fill="#132f58" stroke="#5bd4ff" stroke-width="5"/>
+          <path d="M82 45h132v45H82Z" rx="12" fill="url(#roverGlass)"/>
+          <circle cx="112" cy="67" r="11" fill="#07152d"/><circle cx="184" cy="67" r="11" fill="#07152d"/>
+          <path d="M127 77c12 10 30 10 42 0" fill="none" stroke="#07152d" stroke-width="5" stroke-linecap="round"/>
+          <path d="M148 28V4" stroke="#70e8ff" stroke-width="6"/><circle cx="148" cy="3" r="10" fill="#ffd65c" filter="url(#roverGlow)"/>
+          <rect x="76" y="127" width="144" height="52" rx="18" fill="#07152d" opacity=".88"/>
+          <path d="M106 154h84" stroke="#79f4ca" stroke-width="8" stroke-linecap="round" stroke-dasharray="8 13"/>
+          <g fill="#111f39" stroke="#72e9ff" stroke-width="5"><circle cx="55" cy="202" r="35"/><circle cx="241" cy="202" r="35"/></g>
+          <g fill="none" stroke="#ffd65c" stroke-width="7"><circle cx="55" cy="202" r="15"/><circle cx="241" cy="202" r="15"/></g>
+        </g>
+      </svg>
+    </div>
+    <div class="hero-copy">
+      <span class="eyebrow"><i></i> SPIKE PRIME · MISSION CONTROL</span>
+      <h1>星舰机器人<br><em>冒险学院</em></h1>
+      <p>编写指令，破解机关，把每一次 Bug 变成新的航线。</p>
+      <a class="hero-primary" href="game.html?g=hunt&l=1"><span>启动旗舰任务</span><b>→</b></a>
+    </div>
+    <div class="hero-stats" aria-label="任务统计">
+      <div><strong>10</strong><span>旗舰任务</span></div>
+      <div><strong>6</strong><span>编程实验</span></div>
+      <div><strong>6</strong><span>家庭挑战</span></div>
     </div>
   </header>
 
-  <section class="brick-card brick-card--yellow home-progress">
-    <div class="flex-between">
-      <span class="title-sm">总进度</span>
-      <span class="title-sm" id="progress-label">0 / 54 ★</span>
-    </div>
-    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  <section class="command-strip" aria-label="总任务进度">
+    <div class="command-copy"><span>探索进度</span><strong id="progress-label">0 / 75</strong></div>
+    <div class="mission-progress"><i id="progress-fill" style="width:0%"></i></div>
+    <div class="command-status"><i></i><span>星舰在线</span></div>
   </section>
 
-  <section class="home-category-block">
-    <h2 class="title-lg category-heading category-heading--screen">🖥️ 屏幕编程</h2>
-    <div class="home-levels-grid" id="levels-grid"></div>
-  </section>
+  <main>
+    <section class="mission-section">
+      <header class="section-heading">
+        <div><span>01 · CODE MISSIONS</span><h2>编程任务地图</h2></div>
+        <p>选择一座训练舱，运行你的第一段程序。</p>
+      </header>
+      <div class="mission-grid" id="levels-grid"></div>
+    </section>
 
-  <section class="home-category-block home-family-block">
-    <h2 class="title-lg category-heading category-heading--family">🎉 一起玩（全家真人游戏）</h2>
-    <p class="text-muted home-family-tagline">放下屏幕，全家一起动起来！iPad 当主持人，出题目、打节拍、翻答案。</p>
-    <div class="home-family-grid" id="family-grid"></div>
-  </section>
+    <section class="family-zone">
+      <header class="section-heading section-heading--light">
+        <div><span>02 · FAMILY CO-OP</span><h2>客厅协作中心</h2></div>
+        <p>把 iPad 放在桌中央，让它成为全家的任务主持人。</p>
+      </header>
+      <div class="family-mission-grid" id="family-grid"></div>
+    </section>
 
-  <section class="home-flashcard-entry" style="display:flex; gap:12px; flex-wrap:wrap;">
-    <a href="flashcards.html" class="brick-card brick-card--purple brick-card--interactive tap-target flashcard-entry-card" style="flex:1 1 220px;">
-      <span class="fc-icon">🗂️</span>
-      <span>
-        <span class="title-md" style="display:block;">闪卡 &amp; 小测验</span>
-        <span class="text-muted" style="font-size: var(--font-small);">复习积木知识，挑战满分拿"闪卡大师"徽章</span>
-      </span>
-    </a>
-    <a href="assets/pdf/Lego_Spike_Prime_Flashcards_And_Games.pdf" target="_blank" rel="noopener" class="brick-card brick-card--orange brick-card--interactive tap-target flashcard-entry-card" style="flex:1 1 220px;">
-      <span class="fc-icon">🖨️</span>
-      <span>
-        <span class="title-md" style="display:block;">纸质教具 PDF</span>
-        <span class="text-muted" style="font-size: var(--font-small);">打印闪卡+游戏手册，新窗口打开</span>
-      </span>
-    </a>
-  </section>
+    <section class="support-grid">
+      <a href="flashcards.html" class="support-card support-card--quiz">
+        <div class="support-art" data-glyph="cards"></div>
+        <div><span>知识档案库</span><h3>闪卡与三题挑战</h3><p>翻阅任务卡，一题一屏完成快速测验。</p></div><b>→</b>
+      </a>
+      <a href="assets/pdf/Lego_Spike_Prime_Flashcards_And_Games.pdf" target="_blank" rel="noopener" class="support-card support-card--print">
+        <div class="support-art" data-glyph="print"></div>
+        <div><span>离线装备</span><h3>26 页打印任务包</h3><p>带到桌面、课堂和没有网络的冒险现场。</p></div><b>↗</b>
+      </a>
+    </section>
 
-  <section class="home-badges">
-    <h2 class="title-lg">徽章墙</h2>
-    <div class="badges-row" id="badges-row"></div>
-  </section>
+    <section class="achievement-deck">
+      <header><div><span>MISSION PATCHES</span><h2>任务徽章舱</h2></div><p>完成挑战，点亮你的机器人勋章。</p></header>
+      <div class="patch-row" id="badges-row"></div>
+    </section>
+  </main>
 
-  <footer class="home-footer">
-    <a href="parents.html" class="parents-link">家长角落</a>
+  <footer class="mission-footer">
+    <span>SPIKE 星舰学院 · 本地运行 · 无需登录</span>
+    <a href="parents.html">进入家长控制室 →</a>
   </footer>
-
 </div>
 
 <script type="module">
-import { createMascot } from './js/mascot.js';
-import { store, GAME_IDS } from './js/store.js';
+import { store } from './js/store.js';
+import { GAME_DEFINITIONS } from './js/game-config.js';
 
-const LEVELS = [
-  { id: 'hunt',   title: '网格寻宝', icon: '🗺️', cat: 'hunt' },
-  { id: 'claw',   title: '抓娃娃机', icon: '🕹️', cat: 'claw' },
-  { id: 'macro',  title: '口诀大师', icon: '📜', cat: 'macro' },
-  { id: 'race',   title: '机关轨道', icon: '🏁', cat: 'race' },
-  { id: 'sort',   title: '流水线密码', icon: '📦', cat: 'sort' },
-  { id: 'bridge', title: '精准渡桥', icon: '🌉', cat: 'bridge' },
-];
-
-const BADGES = [
-  ...LEVELS.map((l) => ({ id: l.id, icon: l.icon, label: l.title, cat: l.cat })),
-  { id: 'quiz', icon: '🗂️', label: '闪卡大师', cat: 'macro' },
-];
-
-// 「一起玩」真人互动游戏——不计星/无 level，家庭真人打卡走独立的 localStorage
-// key（js/family-shell.js 里的 lsfa_family_v1），这里只负责渲染入口卡片。
+const LEVELS = GAME_DEFINITIONS;
 const FAMILY_GAMES = [
-  { id: 'humanrobot', title: '人体机器人', icon: '🤖', sub: '你说我做，精确指令传达' },
-  { id: 'livinghunt', title: '客厅寻宝', icon: '🧭', sub: '真人版寻宝，工作记忆预演' },
-  { id: 'rhythm', title: '节奏程序', icon: '🥁', sub: '跟拍循环，越跑越快' },
-  { id: 'macrospell', title: '口令宏', icon: '🔮', sub: '定义宏、混合播报' },
-  { id: 'ifthen', title: '如果就', icon: '🚦', sub: '条件反射，抑制控制' },
-  { id: 'humanbelt', title: '人体传送带', icon: '🎒', sub: '循环计数，心算记忆' },
+  { id: 'humanrobot', title: '人体机器人', code: 'COM-01', sub: '精确指令传达' },
+  { id: 'livinghunt', title: '客厅寻宝', code: 'NAV-02', sub: '真人程序部署' },
+  { id: 'rhythm', title: '节奏程序', code: 'LOOP-03', sub: '循环与节拍' },
+  { id: 'macrospell', title: '口令宏', code: 'MACRO-04', sub: '动作组块挑战' },
+  { id: 'ifthen', title: '如果就', code: 'LOGIC-05', sub: '条件反应训练' },
+  { id: 'humanbelt', title: '人体传送带', code: 'FLOW-06', sub: '循环计数任务' },
 ];
 
-function miniStarsMarkup(n) {
-  let s = '<div class="star-rating star-rating--mini">';
-  for (let i = 1; i <= 3; i++) {
-    s += `<span class="star${i <= n ? ' star--filled' : ''}">★</span>`;
-  }
-  return s + '</div>';
+function glyph(id) {
+  const paths = {
+    hunt: '<path d="M20 56c11-29 31-43 60-43 28 0 48 14 60 43v35c-12 29-32 43-60 43-29 0-49-14-60-43Z"/><path d="M44 82 65 61l17 16 34-35"/><circle cx="44" cy="82" r="6"/><circle cx="116" cy="42" r="6"/>',
+    claw: '<path d="M80 18v42M44 40h72M48 40v26l-17 22M112 40v26l17 22M80 60v33"/><path d="M55 112c0-14 11-25 25-25s25 11 25 25-11 25-25 25-25-11-25-25Z"/>',
+    macro: '<path d="M31 33h37v37H31zM92 33h37v37H92zM31 92h37v37H31z"/><path d="M91 111h39M111 91v40"/>',
+    race: '<path d="M18 107h124M33 107 57 64l25 30 22-51 25 64"/><circle cx="33" cy="107" r="10"/><circle cx="129" cy="107" r="10"/>',
+    sort: '<path d="M27 39h106v82H27z"/><path d="M52 39V22h56v17M48 68h64M48 92h44"/>',
+    bridge: '<path d="M17 115h126M26 115c7-56 31-84 54-84s47 28 54 84"/><path d="M45 89h70M58 58h44"/>',
+    humanrobot: '<rect x="32" y="31" width="96" height="98" rx="22"/><path d="M80 31V13M56 72h48M56 96h48"/><circle cx="60" cy="57" r="6"/><circle cx="100" cy="57" r="6"/>',
+    livinghunt: '<circle cx="80" cy="80" r="55"/><path d="m80 36 17 38-17 50-17-50Z"/><circle cx="80" cy="80" r="8"/>',
+    rhythm: '<path d="M43 105c0-17 13-30 30-30s30 13 30 30-13 30-30 30-30-13-30-30Z"/><path d="M73 75V26l48-11v50"/><circle cx="121" cy="75" r="16"/>',
+    macrospell: '<path d="m80 16 13 33 35 3-27 22 9 35-30-19-30 19 9-35-27-22 35-3Z"/>',
+    ifthen: '<path d="M80 23v113M36 50h88M36 108h88"/><circle cx="57" cy="50" r="17"/><circle cx="103" cy="108" r="17"/>',
+    humanbelt: '<path d="M24 103h112M37 103V63h86v40"/><circle cx="48" cy="111" r="13"/><circle cx="112" cy="111" r="13"/><path d="M61 63V42h38v21"/>',
+    cards: '<rect x="31" y="24" width="86" height="112" rx="10"/><path d="M47 8h86v112"/><path d="M51 54h48M51 76h48M51 98h32"/>',
+    print: '<path d="M43 56V17h74v39M43 110v33h74v-33"/><rect x="24" y="55" width="112" height="58" rx="12"/><path d="M56 88h48"/>',
+  };
+  return `<svg viewBox="0 0 160 160" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">${paths[id] || paths.macro}</g></svg>`;
 }
 
-// 已通 L1 解锁 L2、已通 L2 解锁 L3；点卡片直接跳去玩家当前能玩的最高难度。
-function highestUnlockedLevel(lv) {
+function starsMarkup(n) {
+  return `<span class="stars" aria-label="${n} 星">${[1,2,3].map(i => `<i${i <= n ? ' class="on"' : ''}></i>`).join('')}</span>`;
+}
+
+function highestUnlockedLevel(lv, levelCount) {
   let highest = 1;
-  if (lv.l1 >= 1) highest = 2;
-  if (lv.l2 >= 1) highest = 3;
+  for (let i = 1; i < levelCount; i += 1) {
+    if ((lv[`l${i}`] || 0) >= 1) highest = i + 1; else break;
+  }
   return highest;
 }
 
 function renderLevels() {
-  const grid = document.getElementById('levels-grid');
   const allStars = store.getAllStars();
-  grid.innerHTML = LEVELS.map((lvl) => {
-    const lv = allStars[lvl.id] || { l1: 0, l2: 0, l3: 0 };
-    const target = highestUnlockedLevel(lv);
-    return `
-      <a href="game.html?g=${lvl.id}&l=${target}" class="brick-card brick-card--interactive brick-card--cat-${lvl.cat} level-card tap-target" data-level="${lvl.id}">
-        <div class="level-card-icon">${lvl.icon}</div>
-        <div class="title-md">${lvl.title}</div>
-        <div class="level-progress">
-          <div class="level-progress-row"><span class="level-progress-tag">L1</span>${miniStarsMarkup(lv.l1)}</div>
-          <div class="level-progress-row"><span class="level-progress-tag">L2</span>${miniStarsMarkup(lv.l2)}</div>
-          <div class="level-progress-row"><span class="level-progress-tag">L3</span>${miniStarsMarkup(lv.l3)}</div>
-        </div>
-      </a>
-    `;
+  document.getElementById('levels-grid').innerHTML = LEVELS.map((lvl, idx) => {
+    const lv = allStars[lvl.id] || {};
+    const target = highestUnlockedLevel(lv, lvl.levelCount);
+    const earned = Object.values(lv).reduce((a, n) => a + (Number(n) || 0), 0);
+    if (lvl.id === 'hunt') {
+      const nodes = Array.from({ length: 10 }, (_, i) => {
+        const mission = i + 1, stars = lv[`l${mission}`] || 0, locked = mission > target;
+        return `<a class="route-node${stars ? ' is-done' : ''}${locked ? ' is-locked' : ''}" href="${locked ? '#' : `game.html?g=hunt&l=${mission}`}" ${locked ? 'aria-disabled="true" tabindex="-1"' : ''}><b>${mission}</b><span>${stars ? `${stars}/3` : locked ? '—' : 'GO'}</span></a>`;
+      }).join('');
+      return `<article class="flagship-card"><div class="flagship-copy"><span class="mission-code">FLAGSHIP · NAV-00</span><div class="mission-icon">${glyph('hunt')}</div><h3>${lvl.title}</h3><p>穿越十座机械舱，解锁传送、跳跃与路线优化。</p><a href="game.html?g=hunt&l=${target}" class="mission-action">继续任务 ${String(target).padStart(2,'0')} <b>→</b></a></div><div class="route-panel"><div class="route-orbit"></div><div class="route-label"><span>10-MISSION ROUTE</span><b>${earned} STARS</b></div><div class="route-map">${nodes}</div></div></article>`;
+    }
+    const levelLinks = Array.from({ length: lvl.levelCount }, (_, i) => i + 1).map((n) => {
+      const unlocked = n === 1 || (lv[`l${n - 1}`] || 0) >= 1;
+      const inner = `<b>${String(n).padStart(2,'0')}</b>${starsMarkup(lv[`l${n}`] || 0)}`;
+      return unlocked
+        ? `<a class="mission-level-link" href="game.html?g=${lvl.id}&l=${n}" aria-label="${lvl.title} L${n}">${inner}</a>`
+        : `<span class="mission-level-link is-locked" aria-disabled="true" title="先完成 L${n - 1}">${inner}<i class="level-lock">LOCKED</i></span>`;
+    }).join('');
+    return `<article class="mission-card mission-card--${lvl.id}"><div class="mission-card-top"><span class="mission-code">LAB-${String(idx).padStart(2,'0')}</span><span class="mission-icon">${glyph(lvl.id)}</span></div><h3>${lvl.title}</h3><p>${['双参数精准控制','把动作压缩成函数','编排动态机关程序','用循环驱动流水线','分配资源跨越桥梁'][idx-1] || '编程实验任务'}</p><div class="mission-levels mission-levels--ten">${levelLinks}</div><a class="mission-launch" href="game.html?g=${lvl.id}&l=${target}">继续任务 ${target} <b>→</b></a></article>`;
   }).join('');
 }
 
 function renderFamilyGrid() {
-  const grid = document.getElementById('family-grid');
-  grid.innerHTML = FAMILY_GAMES.map((g) => `
-    <a href="family.html?f=${g.id}" class="brick-card brick-card--orange brick-card--interactive family-card tap-target" data-family="${g.id}">
-      <div class="level-card-icon">${g.icon}</div>
-      <div class="title-md">${g.title}</div>
-      <div class="text-muted family-card-sub-label">${g.sub}</div>
-    </a>
-  `).join('');
+  document.getElementById('family-grid').innerHTML = FAMILY_GAMES.map((g, i) => `<a href="family.html?f=${g.id}&r=1" class="family-mission"><span class="family-index">${String(i + 1).padStart(2,'0')}</span><span class="family-icon">${glyph(g.id)}</span><span class="family-copy"><small>${g.code} · 10 ROUNDS</small><strong>${g.title}</strong><em>${g.sub}</em></span><b class="family-arrow">→</b></a>`).join('');
 }
 
 function renderBadges() {
-  const row = document.getElementById('badges-row');
   const unlocked = store.getBadges();
-  row.innerHTML = BADGES.map((b) => {
-    const isUnlocked = unlocked.includes(b.id);
-    const tier = store.getBadgeTier(b.id);
-    const cls = ['badge-hex'];
-    if (!isUnlocked) cls.push('badge-hex--locked');
-    if (tier === 'gold') cls.push('badge-hex--gold');
-    return `
-      <div class="badge-item">
-        <div class="${cls.join(' ')}" style="--badge-color: var(--cat-${b.cat});">
-          ${isUnlocked ? (tier === 'gold' ? '🌟' : b.icon) : '❔'}
-        </div>
-        <div class="badge-item-label">${b.label}</div>
-      </div>
-    `;
-  }).join('');
+  const defs = [...LEVELS.map(l => ({ id:l.id, title:l.title })), { id:'quiz', title:'闪卡大师' }];
+  document.getElementById('badges-row').innerHTML = defs.map(b => `<div class="mission-patch${unlocked.includes(b.id) ? ' is-unlocked' : ''}"><span>${glyph(b.id === 'quiz' ? 'cards' : b.id)}</span><small>${b.title}</small></div>`).join('');
 }
 
 function renderProgress() {
-  const total = store.totalStars();
-  const max = store.maxStars();
-  document.getElementById('progress-label').textContent = `${total} / ${max} ★`;
-  document.getElementById('progress-fill').style.width = `${max ? (total / max) * 100 : 0}%`;
+  const total = store.totalStars(), max = store.maxStars();
+  document.getElementById('progress-label').textContent = `${total} / ${max}`;
+  document.getElementById('progress-fill').style.width = `${max ? total / max * 100 : 0}%`;
 }
 
-function greetingLine(total, max) {
-  if (total === 0) return '你好！我是 Spike，一起来闯关拿星星吧！';
-  if (total >= max) return '全部满星！你是真正的编程大师！';
-  return `欢迎回来！你已经拿到 ${total} 颗星啦，继续加油！`;
-}
-
-renderLevels();
-renderFamilyGrid();
-renderBadges();
-renderProgress();
-
-const mascot = createMascot(document.getElementById('mascot-slot'), { emotion: 'happy' });
-// 延迟 1 秒再打招呼：让标题/副标题先露出来，也给气泡弹出一个更自然的欢迎节奏
-// （气泡本身的遮挡问题已经在 css/index.css 里通过 .home-header 改 flex-start 解掉，
-// 这里的延迟纯粹是体验上的锦上添花，不是覆盖问题的主要修复手段）。
-setTimeout(() => {
-  mascot.say(greetingLine(store.totalStars(), store.maxStars()), 'happy', 0);
-}, 900);
+document.querySelectorAll('[data-glyph]').forEach(el => { el.innerHTML = glyph(el.dataset.glyph); });
+renderLevels(); renderFamilyGrid(); renderBadges(); renderProgress();
 </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 /* js/shell.js
  * 通用关卡容器——game.html 唯一的入口脚本。
- * 读取 ?g=<id>&l=<1|2|3>，动态 import('./games/<id>.js')，注入 api{complete,fail,sfx,mascot,store,level}，
+ * 读取 ?g=<id>&l=<1..10>，动态 import('./games/<id>.js')，注入 api{complete,fail,sfx,mascot,store,level,seed,variant,rand}，
  * 统一负责：顶部栏（返回/吉祥物/标题/当前 level 星级）、结算弹窗（3 星动画+音效+难度徽标+下一难度入口）、
  * 重试/返回首页。
  *
@@ -15,6 +15,8 @@
 import { sfx } from './sfx.js';
 import { createMascot } from './mascot.js';
 import { store } from './store.js';
+import { badgeRewardLine, getLevelCount, levelLabel } from './game-config.js';
+import { createRandomContext, nextVariant } from './random.js';
 
 const FAIL_LINES = [
   '没关系，再试一次！',
@@ -30,17 +32,13 @@ const COMPLETE_LINES = {
   0: ['勇敢的尝试！再来一次一定可以！', '别灰心，再试一次就会啦！'],
 };
 
-function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
 function qs(sel, root = document) { return root.querySelector(sel); }
 
-// URL 的 &l= 归一化成 1|2|3，缺省/非法一律回退 1（不炸页面）。
-function parseLevel(params) {
+// URL level is validated against the selected game's campaign size.
+function parseLevel(params, gameId) {
   const n = Number(params.get('l'));
-  return (n === 1 || n === 2 || n === 3) ? n : 1;
+  return Number.isInteger(n) && n >= 1 && n <= getLevelCount(gameId) ? n : 1;
 }
-
-const LEVEL_LABEL = { 1: 'L1', 2: 'L2', 3: 'L3' };
 
 function buildSkeleton(root) {
   root.innerHTML = `
@@ -104,7 +102,9 @@ export async function startShell(root = document.getElementById('app')) {
   const params = new URLSearchParams(window.location.search);
   const raw = params.get('g') || '';
   const gameId = /^[a-zA-Z0-9_]+$/.test(raw) ? raw : null;
-  const level = parseLevel(params);
+  const level = parseLevel(params, gameId);
+  const random = createRandomContext(params, `game:${gameId || 'unknown'}:mission:${level}`);
+  const uiRand = random.createStream('ui');
 
   const mascotSlot = qs('#mascot-slot', root);
   const mascot = createMascot(mascotSlot, { emotion: 'idle' });
@@ -127,7 +127,7 @@ export async function startShell(root = document.getElementById('app')) {
   const currentStarsEl = qs('#current-stars', root);
   const levelChipEl = qs('#level-chip', root);
 
-  levelChipEl.textContent = LEVEL_LABEL[level];
+  levelChipEl.textContent = `${levelLabel(gameId, level)} · 组合 ${String(random.variant).padStart(2, '0')}/10`;
   renderStars(currentStarsEl, store.getStars(gameId, level), 'sm');
 
   let mod;
@@ -150,6 +150,11 @@ export async function startShell(root = document.getElementById('app')) {
       mascot,
       store,
       level,
+      seed: random.seed,
+      variant: random.variant,
+      // Rebuild the layout stream for every init so an in-page retry recreates
+      // the exact same mission even after UI copy has consumed randomness.
+      rand: random.createStream('layout'),
     };
   }
 
@@ -165,7 +170,7 @@ export async function startShell(root = document.getElementById('app')) {
 
   function onFail(reason) {
     sfx.fail();
-    mascot.say(pick(FAIL_LINES), 'oops');
+    mascot.say(uiRand.pick(FAIL_LINES), 'oops');
     gameRoot.classList.remove('anim-shake');
     void gameRoot.offsetWidth;
     gameRoot.classList.add('anim-shake');
@@ -181,13 +186,13 @@ export async function startShell(root = document.getElementById('app')) {
 
   function showResultModal(stars, result) {
     const modalRoot = qs('#modal-root', root);
-    const hasNextLevel = stars >= 1 && level < 3;
+    const hasNextLevel = stars >= 1 && level < getLevelCount(gameId);
     modalRoot.innerHTML = `
       <div class="modal-overlay">
         <div class="modal-card">
           <div id="modal-mascot-slot" class="flex-center" style="margin-bottom:8px;"></div>
           <h2 class="title-lg">关卡完成！</h2>
-          <span class="level-chip level-chip--modal">${LEVEL_LABEL[level]}</span>
+          <span class="level-chip level-chip--modal">${levelLabel(gameId, level)}</span>
           <div class="star-rating" id="modal-stars">
             <span class="star" data-i="1">★</span>
             <span class="star" data-i="2">★</span>
@@ -197,6 +202,7 @@ export async function startShell(root = document.getElementById('app')) {
           <div id="modal-badge" class="flex-col gap-2" style="align-items:center; margin: 8px 0 4px;"></div>
           <div class="flex-row gap-3" style="justify-content:center; margin-top: 18px; flex-wrap: wrap;">
             ${hasNextLevel ? `<button class="brick-btn brick-btn--green" id="btn-next-level">挑战下一难度 →</button>` : ''}
+            <button class="brick-btn brick-btn--blue" id="btn-new-variant">换一套随机关卡</button>
             <button class="brick-btn brick-btn--gray" id="btn-retry">重试</button>
             <button class="brick-btn brick-btn--yellow" id="btn-home2">返回首页</button>
           </div>
@@ -206,13 +212,13 @@ export async function startShell(root = document.getElementById('app')) {
 
     const modalMascot = createMascot(qs('#modal-mascot-slot', modalRoot));
     const emotion = stars >= 2 ? 'cheer' : stars === 1 ? 'happy' : 'think';
-    modalMascot.say(pick(COMPLETE_LINES[stars] || COMPLETE_LINES[0]), emotion, 0);
-    qs('#modal-msg', modalRoot).textContent = `本次获得 ${stars} 星 · 历史最佳 ${result.best} 星`;
+    modalMascot.say(uiRand.pick(COMPLETE_LINES[stars] || COMPLETE_LINES[0]), emotion, 0);
+    qs('#modal-msg', modalRoot).textContent = `本次获得 ${stars} 星 · 本次会话最佳 ${result.best} 星`;
 
     if (result.badgeUnlocked) {
       const badgeBox = qs('#modal-badge', modalRoot);
       const badgeIcon = result.badgeTier === 'gold' ? '🌟' : '🏅';
-      const badgeLine = result.badgeTier === 'gold' ? '解锁金徽章！三个难度都拿满星啦！' : '解锁新徽章！';
+      const badgeLine = badgeRewardLine(result.badgeUnlocked, result.badgeTier);
       badgeBox.innerHTML = `
         <div class="badge-hex${result.badgeTier === 'gold' ? ' badge-hex--gold' : ''}" style="--badge-color: var(--cat-${result.badgeUnlocked}, var(--lego-yellow));">${badgeIcon}</div>
         <div class="title-sm">${badgeLine}</div>
@@ -235,9 +241,17 @@ export async function startShell(root = document.getElementById('app')) {
         if (typeof currentGame.destroy === 'function') {
           try { currentGame.destroy(); } catch (e) { /* noop */ }
         }
-        window.location.href = `game.html?g=${encodeURIComponent(gameId)}&l=${level + 1}`;
+        window.location.href = `game.html?g=${encodeURIComponent(gameId)}&l=${level + 1}&seed=${encodeURIComponent(random.seed)}&v=1`;
       });
     }
+
+    qs('#btn-new-variant', modalRoot).addEventListener('click', () => {
+      if (typeof currentGame.destroy === 'function') {
+        try { currentGame.destroy(); } catch (e) { /* noop */ }
+      }
+      const variant = nextVariant(random.variant, random.variantCount);
+      window.location.href = `game.html?g=${encodeURIComponent(gameId)}&l=${level}&seed=${encodeURIComponent(random.seed)}&v=${variant}`;
+    });
 
     qs('#btn-retry', modalRoot).addEventListener('click', () => {
       modalMascot.destroy();
@@ -254,6 +268,10 @@ export async function startShell(root = document.getElementById('app')) {
       }
       window.location.href = 'index.html';
     });
+  }
+
+  if (typeof window !== 'undefined' && window.__LSFA_TEST__) {
+    window.__lsfaShell = { complete: onComplete };
   }
 
   runInit();
