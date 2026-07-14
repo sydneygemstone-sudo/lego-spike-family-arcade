@@ -149,7 +149,7 @@ function injectStylesOnce() {
       background: var(--paper-100); border-radius:18px; padding:12px;
     }
     .claw-inspection-panel,
-    .claw-force-console { border:1px solid #d6e2ec; border-radius:16px; background:#fff; padding:12px; }
+    .claw-force-console { min-width:0; border:1px solid #d6e2ec; border-radius:16px; background:#fff; padding:12px; }
     .claw-panel-kicker { color:#146ba6; font-size:9px; font-weight:950; letter-spacing:.12em; }
     .claw-inspection-panel h3,
     .claw-force-console h3 { margin:3px 0 8px; color:#193752 !important; opacity:1 !important; font-size:17px; }
@@ -157,10 +157,10 @@ function injectStylesOnce() {
     .claw-observations li { position:relative; padding-left:18px; color:#526a80; font-size:11px; font-weight:750; line-height:1.35; }
     .claw-observations li::before { content:'SCAN'; position:absolute; left:0; top:1px; color:#14a383; font-size:7px; font-weight:950; }
     .claw-classify-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
-    .claw-classify-group { padding:7px; border-radius:12px; background:#f2f7fb; }
+    .claw-classify-group { min-width:0; padding:7px; border-radius:12px; background:#f2f7fb; }
     .claw-classify-group strong { display:block; margin-bottom:5px; color:#344f67; font-size:10px; }
-    .claw-classify-options { display:flex; gap:4px; }
-    .claw-classify-btn { flex:1; min-height:44px; padding:7px 5px; border:1px solid #c5d5e3; border-radius:9px; color:#466079; background:#fff; font-size:11px; font-weight:900; touch-action:manipulation; }
+    .claw-classify-options { display:flex; min-width:0; gap:4px; }
+    .claw-classify-btn { flex:1 1 0; min-width:0; min-height:44px; padding:7px 5px; border:1px solid #c5d5e3; border-radius:9px; color:#466079; background:#fff; font-size:11px; font-weight:900; touch-action:manipulation; }
     .claw-classify-btn.is-selected { border-color:#257ac0; color:#fff; background:#257ac0; box-shadow:0 0 0 2px rgba(37,122,192,.14); }
     .claw-classify-btn.is-correct { border-color:#20a47d; color:#155a46; background:#e1f7ef; }
     .claw-classify-status { min-height:28px; margin:8px 0 0; color:#596f84; font-size:10px; font-weight:800; line-height:1.35; }
@@ -198,6 +198,14 @@ function injectStylesOnce() {
     @keyframes claw-fx-drop {
       0% { transform: translateY(0) rotate(0deg); opacity:1; }
       100% { transform: translateY(48px) rotate(16deg); opacity:0.1; }
+    }
+
+    /* 真实 iPad 竖屏必须把材料判断与夹力参考尺上下堆叠。不能只看 CSS 宽度：
+     * 820/834/1024px 的竖屏 iPad 足以命中桌面宽度，却没有容纳两张卡的横向空间。 */
+    @media (orientation: portrait) {
+      .claw-force-section { grid-template-columns:minmax(0,1fr); }
+      .claw-inspection-panel,
+      .claw-force-console { width:100%; }
     }
 
     /* 横屏短视口（如 1024x768）：竖排会挤不下，改成场景左 · 控制右两栏，

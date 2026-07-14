@@ -24,28 +24,14 @@
       <section class="print-kit-actions" aria-labelledby="print-kit-actions-title">
         <div class="print-kit-copy">
           <span>IPAD / HOME SCREEN SAFE</span>
-          <h2 id="print-kit-actions-title">先留在应用里预览，需要时再分享或打印</h2>
-          <p>“分享 / 打印”会把 PDF 文件交给 iPad 系统分享面板，可选择“打印”或“存储到文件”。这里始终保留返回按钮，不会再被困在 PDF 查看器里。</p>
+          <h2 id="print-kit-actions-title">26 页已经全部渲染在这里</h2>
+          <p>直接向下浏览，不会进入或覆盖成浏览器的 PDF 查看器。需要纸质版时，只按右侧的打印按钮。</p>
         </div>
-        <div class="print-kit-buttons">
-          <button class="print-kit-button print-kit-button--primary" id="share-pdf" type="button">分享 / 打印 PDF</button>
-          <a class="print-kit-button" id="download-pdf" href="assets/pdf/Lego_Spike_Prime_Flashcards_And_Games.pdf" download="SPIKE-Prime-26页打印任务包.pdf">下载 PDF</a>
-          <button class="print-kit-button" id="open-pdf" type="button">在新窗口打开</button>
-          <a class="print-kit-button print-kit-button--quiet" href="index.html">返回游戏首页</a>
-        </div>
-        <p class="print-kit-status" id="print-kit-status" role="status" aria-live="polite">PDF 已嵌入下方页面，可直接上下浏览。</p>
+        <button class="print-kit-button print-kit-button--primary" id="print-pages" type="button">打印全部 26 页</button>
+        <p class="print-kit-status" id="print-kit-status" role="status" aria-live="polite">正在载入 26 页任务包…</p>
       </section>
 
-      <section class="print-kit-preview" aria-label="26 页 PDF 预览">
-        <iframe
-          id="pdf-frame"
-          title="SPIKE Prime 26 页打印任务包"
-          src="assets/pdf/Lego_Spike_Prime_Flashcards_And_Games.pdf#view=FitH"
-        ></iframe>
-        <noscript>
-          <p>请启用 JavaScript，或使用<a href="assets/pdf/Lego_Spike_Prime_Flashcards_And_Games.pdf">直接 PDF 链接</a>。</p>
-        </noscript>
-      </section>
+      <section class="print-page-stack" id="pdf-pages" aria-label="26 页打印任务包"></section>
     </main>
   </div>
   <script type="module" src="js/print-kit.js"></script>
