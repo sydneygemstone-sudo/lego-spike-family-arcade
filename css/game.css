@@ -210,7 +210,10 @@ body::before {
  * child scrolls through a long programming console. */
 .game-action-dock { z-index: 18; }
 
-@media (min-width: 820px) {
+/* Split-screen game layouts are for landscape tablets/desktops only. Modern
+ * portrait iPads report CSS widths of 820/834/1024px; width alone must never
+ * force two full game panels side by side. */
+@media (min-width: 820px) and (orientation: landscape) {
   .hunt-page, .bridge-page { grid-template-columns: minmax(430px, 1.12fr) minmax(360px, .88fr) !important; align-items: stretch; }
   .claw-layout, .sort-page, .race-layout, .macro-page { flex-direction: row !important; align-items: stretch !important; }
   .claw-stage-card, .claw-controls, .sort-belt-card, .sort-program-card, .race-stage-card, .race-controls, .macro-left, .macro-right { flex: 1 1 0; min-width: 0; }
@@ -223,8 +226,8 @@ body::before {
   .hunt-grid { width: min(90vw, 52vh, 540px) !important; }
   .bridge-wheel-guide { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
   .game-action-dock {
-    position: sticky;
-    bottom: max(8px, env(safe-area-inset-bottom));
+    position: static;
+    bottom: auto;
     padding: 8px;
     border: 1px solid rgba(88,225,236,.22);
     border-radius: 16px;
@@ -235,14 +238,14 @@ body::before {
 }
 
 @media (max-width: 819px) and (orientation: portrait) {
-  .game-root { padding-bottom: max(108px, calc(92px + env(safe-area-inset-bottom))); }
+  .game-root { padding-bottom: max(22px, env(safe-area-inset-bottom)); }
   .game-action-dock {
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: max(10px, env(safe-area-inset-bottom));
-    z-index: 80;
-    width: auto;
+    position: static;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    z-index: 18;
+    width: 100%;
     max-width: none;
     margin: 0;
     display: flex;

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#061426">
+  <title>SPIKE Prime · 打印任务包</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23061426'/%3E%3Cpath d='M25 18h50v64H25z' fill='%23fff'/%3E%3Cpath d='M34 34h32M34 48h32M34 62h22' stroke='%232771dc' stroke-width='7'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/print-kit.css">
+</head>
+<body>
+  <div class="print-kit-app">
+    <header class="print-kit-header">
+      <a class="print-kit-back" href="index.html" aria-label="返回任务地图">← 返回任务地图</a>
+      <div>
+        <span>OFFLINE FIELD KIT</span>
+        <h1>26 页打印任务包</h1>
+      </div>
+      <strong>PDF · A4</strong>
+    </header>
+
+    <main class="print-kit-main">
+      <section class="print-kit-actions" aria-labelledby="print-kit-actions-title">
+        <div class="print-kit-copy">
+          <span>IPAD / HOME SCREEN SAFE</span>
+          <h2 id="print-kit-actions-title">先留在应用里预览，需要时再分享或打印</h2>
+          <p>“分享 / 打印”会把 PDF 文件交给 iPad 系统分享面板，可选择“打印”或“存储到文件”。这里始终保留返回按钮，不会再被困在 PDF 查看器里。</p>
+        </div>
+        <div class="print-kit-buttons">
+          <button class="print-kit-button print-kit-button--primary" id="share-pdf" type="button">分享 / 打印 PDF</button>
+          <a class="print-kit-button" id="download-pdf" href="assets/pdf/Lego_Spike_Prime_Flashcards_And_Games.pdf" download="SPIKE-Prime-26页打印任务包.pdf">下载 PDF</a>
+          <button class="print-kit-button" id="open-pdf" type="button">在新窗口打开</button>
+          <a class="print-kit-button print-kit-button--quiet" href="index.html">返回游戏首页</a>
+        </div>
+        <p class="print-kit-status" id="print-kit-status" role="status" aria-live="polite">PDF 已嵌入下方页面，可直接上下浏览。</p>
+      </section>
+
+      <section class="print-kit-preview" aria-label="26 页 PDF 预览">
+        <iframe
+          id="pdf-frame"
+          title="SPIKE Prime 26 页打印任务包"
+          src="assets/pdf/Lego_Spike_Prime_Flashcards_And_Games.pdf#view=FitH"
+        ></iframe>
+        <noscript>
+          <p>请启用 JavaScript，或使用<a href="assets/pdf/Lego_Spike_Prime_Flashcards_And_Games.pdf">直接 PDF 链接</a>。</p>
+        </noscript>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="js/print-kit.js"></script>
+</body>
+</html>
