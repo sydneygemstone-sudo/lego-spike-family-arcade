@@ -18,8 +18,9 @@
  * 协议见 API.md：export default {id,title,icon,init,destroy}，api.level 决定关卡生成。
  */
 
-import { beltSceneColored, roverSide, dialFrame } from '../assets/art.js';
+import { beltSceneColored, roverSide } from './mission-art.js';
 import { createTray, createSequence } from '../js/blocks-ui.js';
+import { judgeLoopProgram, validateLoopStructure } from '../js/program-ast.js';
 
 const COLORS = ['red', 'blue', 'yellow'];
 const COLOR_ZH = { red: '红', blue: '蓝', yellow: '黄' };
@@ -28,10 +29,11 @@ const COLOR_ZH = { red: '红', blue: '蓝', yellow: '黄' };
 const SEG = 78, BX = 130, BY = 130, VIEW_H = 200;
 const BODY_MAX = 4, PREFIX_MAX = 2;
 const STAGE_TARGET_H = 140; // px：传送带舞台固定目标高度，包裹数少（带子相对更"方"）时也不会把卡片撑高
-const DIAL_MIN = 1, DIAL_MAX = 6;
+const DIAL_MIN = 2, DIAL_MAX = 6;
 
-function randInt(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
-function pick(arr) { return arr[randInt(0, arr.length - 1)]; }
+let randSource = null;
+function randInt(a, b) { return randSource?.int ? randSource.int(a, b) : a + Math.floor(Math.random() * (b - a + 1)); }
+function pick(arr) { return randSource?.pick ? randSource.pick(arr) : arr[randInt(0, arr.length - 1)]; }
 function wait(ms, timers) { return new Promise((resolve) => { timers.push(setTimeout(resolve, ms)); }); }
 
 function beltWidth(n) { return BX + n * SEG + 170; }
@@ -53,25 +55,26 @@ function genBody(len) {
   return body;
 }
 
-function buildLevelPlan(level) {
-  if (level === 3) {
-    const period = 2;
-    const reps = randInt(2, 3);
-    const prefixLen = randInt(1, 2);
-    const body = genBody(period);
-    let prefix;
-    do { prefix = Array.from({ length: prefixLen }, () => pick(COLORS)); }
-    while (prefix[prefix.length - 1] === body[0]);
-    const colors = [...prefix];
-    for (let k = 0; k < reps; k++) colors.push(...body);
-    return { colors, prefix, prefixLen, body, period, reps, N: colors.length };
+export function buildSortLevelPlan(level, suppliedRand = null) {
+  randSource = suppliedRand;
+  const mission = Math.max(1, Math.min(10, Number(level) || 1));
+  const tier = mission <= 3 ? 1 : mission <= 6 ? 2 : 3;
+  const segmentCount = tier === 3 ? 3 : 2;
+  const period = 3;
+  const reps = tier === 1 ? 3 : tier === 2 ? 4 : 3;
+  const segments = [];
+  for (let i = 0; i < segmentCount; i++) {
+    let body = genBody(period);
+    while (segments.some((segment) => segment.body.join('|') === body.join('|'))) body = genBody(period);
+    segments.push({ body, reps });
   }
-  const period = level === 2 ? 3 : 2;
-  const reps = level === 2 ? randInt(3, 4) : 3;
-  const body = genBody(period);
-  const colors = [];
-  for (let k = 0; k < reps; k++) colors.push(...body);
-  return { colors, prefix: [], prefixLen: 0, body, period, reps, N: colors.length };
+  const prefixLen = tier === 3 ? randInt(1, 2) : 0;
+  const prefix = Array.from({ length: prefixLen }, () => pick(COLORS));
+  const colors = [...prefix];
+  segments.forEach((segment) => {
+    for (let k = 0; k < segment.reps; k++) colors.push(...segment.body);
+  });
+  return { colors, prefix, prefixLen, segments, N: colors.length, mission, tier };
 }
 
 function colorBlockDefs() {
@@ -87,7 +90,7 @@ function injectStylesOnce() {
   style.textContent = `
     .sort-belt-card.brick-card { padding: 20px var(--space-4) 4px; }
     .sort-program-card.brick-card { padding: 20px var(--space-4) 4px; }
-    .sort-stage { display:flex; justify-content:center; background:var(--paper-50); border-radius:14px; overflow:hidden; }
+    .sort-stage { display:flex; justify-content:flex-start; background:var(--paper-50); border-radius:14px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
     .sort-stage-inner { position:relative; display:flex; }
     .sort-stage-inner svg { width:100%; height:auto; display:block; }
     .sort-parcel-hl { transform-box:fill-box; transform-origin:center; transform:scale(1.22); transition:transform .16s ease; filter:drop-shadow(0 0 8px rgba(245,197,24,.95)); }
@@ -104,6 +107,8 @@ function injectStylesOnce() {
     .sort-bin--pulse { animation: sort-bin-pulse .4s ease; }
     @keyframes sort-bin-pulse { 0%,100%{ transform:scale(1); } 45%{ transform:scale(1.22); } }
     .sort-program-card { display:flex; flex-direction:column; gap:4px; }
+    .sort-segments { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px; }
+    .sort-segment { border:2px solid #D7B7EF; border-radius:12px; padding:6px; background:#FBF4FF; }
     .sort-section-label { margin:0 0 2px; font-weight:800; font-size: var(--font-small); color: var(--ink-700); }
     .sort-hint { font-size:11px; color:var(--ink-500); font-weight:600; margin:0 0 4px; }
     .sort-loop-row { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; }
@@ -139,8 +144,14 @@ function injectStylesOnce() {
       #sort-recount-btn { min-height:36px; padding:6px 12px; font-size:12px; margin-top:0; }
       .sort-section-label { margin:0 0 1px; font-size:11px; }
       .sort-hint { font-size:9.5px; margin:0 0 2px; }
-      #sort-prefix-seq .blocks-seq, #sort-body-seq .blocks-seq { min-height:40px; padding:4px 6px; }
+      #sort-prefix-seq .blocks-seq, [id^="sort-body-seq-"] .blocks-seq { min-height:34px; padding:3px 4px; gap:3px; }
+      [id^="sort-body-seq-"] .brick-block { min-width:40px; min-height:30px; padding:3px 5px 2px; margin-top:5px; font-size:9px; }
+      [id^="sort-body-seq-"] .brick-block .blk-icon { font-size:11px; }
       #sort-tray .blocks-tray { padding:4px 6px 6px; }
+      .sort-segments { grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; }
+      .sort-segment { padding:3px; }
+      .sort-loop-row { gap:3px; font-size:10px; }
+      .sort-loop-row .brick-btn--icon { min-width:30px; width:30px; min-height:30px; padding:2px; }
       .sort-dial-outer { width:clamp(40px,7vw,50px); }
       .sort-formula-text { font-size: clamp(12px,1.8vw,15px); margin:1px 0; }
       .sort-program-card .brick-btn { min-height:38px; padding:7px 16px; margin-top:4px; }
@@ -154,21 +165,23 @@ function render(container, api) {
   let cancelled = false;
   const timers = [];
   const level = api.level;
-  const plan = buildLevelPlan(level);
-  const isL3 = plan.prefixLen > 0 || level === 3;
-  let dialValue = 1;
+  const plan = buildSortLevelPlan(level, api.rand);
+  const isL3 = plan.prefixLen > 0 || plan.tier === 3;
+  const dialValues = plan.segments.map(() => 2);
   let attempts = 0;
   let busy = false;
+  let recounting = false;
+  let scanGeneration = 0;
   const bins = { red: 0, blue: 0, yellow: 0 };
 
   container.innerHTML = `
     <div class="sort-page">
       <div class="brick-card brick-card--cat-sort sort-belt-card">
-        <p class="title-sm" style="margin:0 0 8px;">🔎 看看传送带上的包裹，找找颜色规律！</p>
+        <p class="title-sm" style="margin:0 0 8px;">SEQUENCE SCAN / 识别传送带颜色周期</p>
         <div class="sort-stage"><div class="sort-stage-inner" id="sort-belt-box"></div></div>
         <div class="sort-bins-row" id="sort-bins-row"></div>
         <div class="flex-center" style="margin-top:4px;">
-          <button class="brick-btn brick-btn--gray brick-btn--sm" id="sort-recount-btn">🔍 再看一遍</button>
+          <button class="brick-btn brick-btn--gray brick-btn--sm" id="sort-recount-btn">重新扫描序列</button>
         </div>
       </div>
 
@@ -179,23 +192,22 @@ function render(container, api) {
           <div id="sort-prefix-seq"></div>
         </div>` : ''}
         <div>
-          <p class="sort-section-label">${isL3 ? '② ' : ''}循环体 —— 拖 2-4 个动作，组成"每一轮"的样子</p>
+          <p class="sort-section-label">${isL3 ? '② ' : ''}把长流水线拆成 ${plan.segments.length} 段 Repeat 程序</p>
           <div id="sort-tray"></div>
-          <div class="sort-loop-row">
-            <span class="sort-loop-brace">Repeat</span>
-            <div class="sort-dial-outer" id="sort-dial-outer">
-              ${dialFrame({ label: '次' })}
-              <button class="sort-dial-hit sort-dial-hit--up" id="sort-dial-up" aria-label="增加次数"></button>
-              <button class="sort-dial-hit sort-dial-hit--down" id="sort-dial-down" aria-label="减少次数"></button>
-              <div class="sort-dial-readout" id="sort-dial-value">1</div>
-            </div>
-            <span class="sort-loop-brace">次 {</span>
+          <div class="sort-segments">
+            ${plan.segments.map((_, i) => `<div class="sort-segment">
+              <div class="sort-loop-row"><strong>第 ${i + 1} 段 · Repeat</strong>
+                <button class="brick-btn brick-btn--gray brick-btn--icon" data-dial-down="${i}">−</button>
+                <span class="sort-dial-readout" data-dial-value="${i}">2</span>
+                <button class="brick-btn brick-btn--gray brick-btn--icon" data-dial-up="${i}">＋</button>
+                <strong>次</strong>
+              </div>
+              <div id="sort-body-seq-${i}"></div>
+            </div>`).join('')}
           </div>
-          <div id="sort-body-seq"></div>
-          <div class="sort-loop-brace text-center">}</div>
         </div>
         <p class="sort-formula-text" id="sort-formula-text"></p>
-        <div class="flex-center">
+        <div class="flex-center game-action-dock">
           <button class="brick-btn brick-btn--green" id="sort-run-btn" disabled>▶ 运行程序</button>
         </div>
         <p class="sort-status-text" id="sort-status-text"></p>
@@ -208,10 +220,7 @@ function render(container, api) {
   const recountBtn = container.querySelector('#sort-recount-btn');
   const traySlot = container.querySelector('#sort-tray');
   const prefixSeqSlot = container.querySelector('#sort-prefix-seq');
-  const bodySeqSlot = container.querySelector('#sort-body-seq');
-  const dialUpBtn = container.querySelector('#sort-dial-up');
-  const dialDownBtn = container.querySelector('#sort-dial-down');
-  const dialValueEl = container.querySelector('#sort-dial-value');
+  const bodySeqSlots = plan.segments.map((_, i) => container.querySelector(`#sort-body-seq-${i}`));
   const formulaText = container.querySelector('#sort-formula-text');
   const runBtn = container.querySelector('#sort-run-btn');
   const statusText = container.querySelector('#sort-status-text');
@@ -224,7 +233,9 @@ function render(container, api) {
     const stageOuter = container.querySelector('.sort-stage');
     const availW = stageOuter.getBoundingClientRect().width || 700;
     const aspect = beltWidth(plan.N) / VIEW_H;
-    beltBox.style.width = `${Math.min(availW, STAGE_TARGET_H * aspect)}px`;
+    // Long production lines must stay readable instead of being compressed into a sparkline.
+    // The viewport becomes a horizontal scanner; each parcel keeps a useful touch-scale size.
+    beltBox.style.width = `${Math.max(availW, Math.min(STAGE_TARGET_H * aspect, 2200))}px`;
   }
 
   binsRow.innerHTML = COLORS.map((c) => `
@@ -248,72 +259,98 @@ function render(container, api) {
 
   /* -------- 循环体序列（最后创建 = tap 兜底的默认落点，方便更常用的这一区） -------- */
   const tray = createTray(traySlot, colorBlockDefs());
-  const bodySeq = createSequence(bodySeqSlot, { maxSlots: BODY_MAX, emptyText: '把 2-4 个动作拖到这里 →' });
+  const bodySeqs = bodySeqSlots.map((slot, i) => createSequence(slot, { maxSlots: BODY_MAX, emptyText: `第 ${i + 1} 段：拖 2-4 个动作 →` }));
 
   if (typeof window !== 'undefined' && window.__LSFA_TEST__) {
-    window.__lsfaSort = { plan, prefixSeq, bodySeq };
+    window.__lsfaSort = { plan, prefixSeq, bodySeqs, dialValues };
   }
 
   function currentCoverage() {
     const prefixCount = prefixSeq ? prefixSeq.getSequence().length : 0;
-    const bodyLen = bodySeq.getSequence().length;
-    return { prefixCount, bodyLen, coverage: prefixCount + bodyLen * dialValue };
+    const bodyLens = bodySeqs.map((seq) => seq.getSequence().length);
+    const coverage = prefixCount + bodyLens.reduce((sum, len, i) => sum + len * dialValues[i], 0);
+    return { prefixCount, bodyLens, coverage };
   }
 
   function updateFormula() {
-    const { prefixCount, bodyLen, coverage } = currentCoverage();
-    const parts = isL3 ? `前置 ${prefixCount} 个 + 循环体 ${bodyLen} 个 × Repeat ${dialValue} 次` : `循环体 ${bodyLen} 个 × Repeat ${dialValue} 次`;
+    const { prefixCount, bodyLens, coverage } = currentCoverage();
+    const loops = bodyLens.map((len, i) => `第${i + 1}段 ${len}×${dialValues[i]}`).join(' + ');
+    const parts = isL3 ? `前置 ${prefixCount} + ${loops}` : loops;
     formulaText.textContent = `${parts} = ${coverage} 个包裹（传送带共 ${plan.N} 个）`;
     formulaText.classList.remove('sort-formula--ok', 'sort-formula--bad');
-    const exact = coverage === plan.N && bodyLen > 0;
+    const structure = validateLoopStructure({
+      prefix: new Array(prefixCount).fill('prefix'),
+      segments: bodyLens.map((len, i) => ({ body: new Array(len).fill('color'), repeat: dialValues[i] })),
+      targetLength: plan.N,
+      minSegments: plan.segments.length,
+    });
+    const exact = structure.ok;
     if (exact) {
       formulaText.classList.add('sort-formula--ok');
-    } else if (bodyLen > 0) {
+    } else if (bodyLens.some((len) => len > 0)) {
       formulaText.classList.add('sort-formula--bad');
       formulaText.textContent += coverage < plan.N ? `　还差 ${plan.N - coverage} 个没处理哦` : `　多出了 ${coverage - plan.N} 个，覆盖不下啦`;
     }
-    runBtn.disabled = !exact || busy;
+    runBtn.disabled = !exact || busy || recounting;
   }
 
-  dialValueEl.textContent = String(dialValue);
   updateFormula();
 
-  dialUpBtn.addEventListener('click', () => {
+  container.querySelectorAll('[data-dial-up]').forEach((btn) => btn.addEventListener('click', () => {
     if (busy) return;
-    dialValue = Math.min(DIAL_MAX, dialValue + 1);
-    dialValueEl.textContent = String(dialValue);
-    api.sfx.click();
-    updateFormula();
-  });
-  dialDownBtn.addEventListener('click', () => {
+    const i = Number(btn.dataset.dialUp);
+    dialValues[i] = Math.min(DIAL_MAX, dialValues[i] + 1);
+    container.querySelector(`[data-dial-value="${i}"]`).textContent = String(dialValues[i]);
+    api.sfx.click(); updateFormula();
+  }));
+  container.querySelectorAll('[data-dial-down]').forEach((btn) => btn.addEventListener('click', () => {
     if (busy) return;
-    dialValue = Math.max(DIAL_MIN, dialValue - 1);
-    dialValueEl.textContent = String(dialValue);
-    api.sfx.click();
-    updateFormula();
-  });
-  bodySeq.onChange(() => updateFormula());
+    const i = Number(btn.dataset.dialDown);
+    dialValues[i] = Math.max(DIAL_MIN, dialValues[i] - 1);
+    container.querySelector(`[data-dial-value="${i}"]`).textContent = String(dialValues[i]);
+    api.sfx.click(); updateFormula();
+  }));
+  bodySeqs.forEach((seq) => seq.onChange(() => updateFormula()));
   if (prefixSeq) prefixSeq.onChange(() => updateFormula());
 
   /* -------- 演练：逐个高亮包裹，帮助看清规律，不计分，可反复 -------- */
-  let recounting = false;
   recountBtn.addEventListener('click', async () => {
-    if (recounting || busy) return;
+    if (busy) return;
+    if (recounting) {
+      scanGeneration += 1;
+      recounting = false;
+      beltBox.querySelectorAll('.parcel').forEach((g) => g.classList.remove('sort-parcel-hl'));
+      recountBtn.textContent = '重新扫描序列';
+      statusText.textContent = '扫描已停止，可以继续编程或运行。';
+      updateFormula();
+      return;
+    }
     recounting = true;
+    const myGeneration = ++scanGeneration;
+    recountBtn.textContent = '停止扫描';
+    statusText.textContent = '扫描中…再次点按钮可停止。';
+    updateFormula();
     api.sfx.click();
     const groups = Array.from(beltBox.querySelectorAll('.parcel'));
     for (const g of groups) {
-      if (cancelled) break;
+      if (cancelled || myGeneration !== scanGeneration) break;
       g.classList.add('sort-parcel-hl');
       api.sfx.click();
       await wait(240, timers);
-      if (cancelled) break;
+      if (cancelled || myGeneration !== scanGeneration) break;
       g.classList.remove('sort-parcel-hl');
     }
-    recounting = false;
+    if (myGeneration === scanGeneration) {
+      recounting = false;
+      recountBtn.textContent = '重新扫描序列';
+      statusText.textContent = '扫描完成，现在用 Repeat 写出规律。';
+      updateFormula();
+    }
   });
 
   function lockControls() {
+    scanGeneration += 1;
+    recounting = false;
     programCard.classList.add('sort-locked');
     recountBtn.disabled = true;
   }
@@ -364,21 +401,26 @@ function render(container, api) {
 
   function buildFlatProgram() {
     const prefixList = prefixSeq ? prefixSeq.getSequence().map((b) => b.type) : [];
-    const bodyList = bodySeq.getSequence().map((b) => b.type);
-    const flat = [...prefixList];
-    for (let k = 0; k < dialValue; k++) flat.push(...bodyList);
-    return flat;
+    const segments = bodySeqs.map((seq, i) => ({ body: seq.getSequence().map((b) => b.type), repeat: dialValues[i] }));
+    return judgeLoopProgram({ prefix: prefixList, segments, target: plan.colors, minSegments: plan.segments.length });
   }
 
   async function runProgram() {
-    if (busy) return;
+    if (busy || recounting) return;
     const { coverage } = currentCoverage();
     if (coverage !== plan.N) return;
     busy = true;
     attempts += 1;
     lockControls();
     resetRunVisuals();
-    const flat = buildFlatProgram();
+    const verdict = buildFlatProgram();
+    if (!verdict.ok) {
+      const bad = verdict.mismatchIndex == null ? '' : `第 ${verdict.mismatchIndex + 1} 个包裹开始不一致。`;
+      statusText.textContent = `程序还没匹配整条流水线。${bad}`;
+      api.fail(verdict.reason);
+      busy = false; unlockControls(); updateFormula(); return;
+    }
+    const flat = verdict.expanded;
     statusText.textContent = '运行中…';
     let wheelDeg = 0;
     for (let i = 0; i < plan.N; i++) {
@@ -437,9 +479,10 @@ function render(container, api) {
   return {
     destroy() {
       cancelled = true;
+      scanGeneration += 1;
       timers.forEach((t) => clearTimeout(t));
       if (prefixSeq) prefixSeq.destroy();
-      bodySeq.destroy();
+      bodySeqs.forEach((seq) => seq.destroy());
     },
   };
 }
@@ -449,7 +492,7 @@ let activeHandle = null;
 export default {
   id: 'sort',
   title: '流水线密码',
-  icon: '📦',
+  icon: '⟳',
   init(container, api) {
     injectStylesOnce();
     activeHandle = render(container, api);

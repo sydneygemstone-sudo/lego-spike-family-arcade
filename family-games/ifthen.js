@@ -1,8 +1,8 @@
 /* family-games/ifthen.js
  * 如果就（条件反射）—— 真人互动分类第 5 关。
- * 先约定规则：🔴红屏→定住 / 🟢绿屏→跳一下 / 🔔铃声→蹲下。iPad 随机全屏亮色或播提示音，
- * 间隔越来越短，一共触发 10 次；做错了"自罚重来"（进度清零重新挑战）。
- * 教学点：if-then（条件分支）+ 抑制控制（ADHD 训练核心场景）。
+ * 先约定规则：红屏→双手停住 / 绿屏→举手 / 铃声→拍腿。iPad 随机全屏亮色或播提示音，
+ * 间隔越来越短，一共触发 10 次；没对上可以看一遍规则再重新开始。
+ * 教学点：if-then（条件分支）与等待启动信号。
  * 协议：export default { id, title, icon, howto, init(container, api), destroy() }。
  */
 
@@ -13,9 +13,9 @@ const INTERVAL_STEP = 160;
 const FLASH_MS = 900;
 
 const RULES = [
-  { key: 'red', color: '#E8443F', label: '🔴 红屏', action: 'freeze', actionLabel: '定住不动' },
-  { key: 'green', color: '#57B84E', label: '🟢 绿屏', action: 'jump', actionLabel: '跳一下' },
-  { key: 'bell', color: '#3D7BD9', label: '🔔 铃声', action: 'squat', actionLabel: '蹲下' },
+  { key: 'red', color: '#E8443F', label: '红屏', action: 'freeze', actionLabel: '双手停住' },
+  { key: 'green', color: '#57B84E', label: '绿屏', action: 'raisehand', actionLabel: '举起双手' },
+  { key: 'bell', color: '#3D7BD9', label: '铃声', action: 'patlegs', actionLabel: '拍两下腿' },
 ];
 
 // 待机屏原来只放一个默认字号的 🚦 emoji，在一整块大白卡里显得又小又空。
@@ -34,13 +34,13 @@ function trafficLightHTML() {
 function render(container, api) {
   let cancelled = false;
   const timers = [];
-  const { Art, rand, sfx, mascot, countdownRing, completeRound } = api;
+  const { Art, rand, sfx, mascot, countdownRing, completeRound, emitFeedback, glyph } = api;
 
   function wait(ms) { return new Promise((resolve) => { timers.push(setTimeout(resolve, ms)); }); }
 
   container.innerHTML = `
     <div class="brick-card brick-card--cat-claw">
-      <p class="title-sm" style="margin:0 0 8px;">📜 先约定规则，看好了再开始：</p>
+      <p class="title-sm" style="margin:0 0 8px;">先约定规则 · 看好了再开始</p>
       <div class="flex-row gap-4" style="flex-wrap:wrap; justify-content:center;">
         ${RULES.map((r) => `
           <div class="family-card-item">
@@ -62,12 +62,12 @@ function render(container, api) {
     </div>
 
     <div class="flex-row gap-3" style="justify-content:center; flex-wrap:wrap;">
-      <button class="brick-btn brick-btn--blue brick-btn--lg" id="it-start-btn">▶ 开始挑战</button>
+      <button class="brick-btn brick-btn--blue brick-btn--lg" id="it-start-btn">开始挑战</button>
     </div>
 
     <div class="flex-row gap-3" style="justify-content:center; flex-wrap:wrap; display:none;" id="it-judge-row">
-      <button class="brick-btn brick-btn--green brick-btn--lg" id="it-ok-btn">✅ 做对了</button>
-      <button class="brick-btn brick-btn--red brick-btn--lg" id="it-miss-btn">❌ 做错了（重来）</button>
+      <button class="brick-btn brick-btn--green brick-btn--lg" id="it-ok-btn">做对了</button>
+      <button class="brick-btn brick-btn--red brick-btn--lg" id="it-miss-btn">没对上 · 重新开始</button>
     </div>
   `;
 
@@ -91,6 +91,7 @@ function render(container, api) {
     overlay.innerHTML = `<div class="fo-label">${rule.label}</div>`;
     overlay.classList.add('is-on');
     if (rule.key === 'bell') sfx.star(); else sfx.click();
+    emitFeedback('action', { label: `${rule.label} → ${rule.actionLabel}` });
   }
   function unflash() {
     overlay.classList.remove('is-on');
@@ -98,7 +99,7 @@ function render(container, api) {
 
   function updateStageWaiting() {
     stage.innerHTML = `
-      <div class="family-card-icon" style="width:clamp(64px,14vw,140px);height:clamp(64px,14vw,140px);display:flex;align-items:center;justify-content:center;font-size:clamp(48px,11vw,110px);line-height:1;">🤫</div>
+      <div class="family-card-icon">${glyph('hidden')}</div>
       <div class="family-card-text">等待触发……</div>
       <div class="family-card-sub">盯紧屏幕/竖起耳朵，第 ${roundIndex + 1} / ${TOTAL_ROUNDS} 次</div>
     `;
@@ -132,13 +133,13 @@ function render(container, api) {
   function finishSuccess() {
     running = false;
     stage.innerHTML = `
-      <div class="family-card-icon" style="width:clamp(64px,14vw,140px);height:clamp(64px,14vw,140px);display:flex;align-items:center;justify-content:center;font-size:clamp(48px,11vw,110px);line-height:1;">🏅</div>
+      <div class="family-card-icon">${glyph('trophy')}</div>
       <div class="family-card-text">挑战成功！</div>
       <div class="family-card-sub">连续通过了 ${TOTAL_ROUNDS} 次反应考验！</div>
     `;
     sfx.success();
-    mascot.say('抑制控制满分！你们的反应力太棒了！', 'cheer');
-    startBtn.textContent = '▶ 再挑战一次';
+    mascot.say('十次规则都完成了，配合得很认真！', 'cheer');
+    startBtn.textContent = '再挑战一次';
     startBtn.style.display = '';
     completeRound();
   }
@@ -153,7 +154,7 @@ function render(container, api) {
       <div class="family-card-text">${message}</div>
       <div class="family-card-sub">点「开始挑战」，一共要闯 ${TOTAL_ROUNDS} 次！</div>
     `;
-    startBtn.textContent = '▶ 开始挑战';
+    startBtn.textContent = '开始挑战';
     startBtn.style.display = '';
     if (emotion) mascot.say(message, emotion);
   }
@@ -173,7 +174,8 @@ function render(container, api) {
   });
   missBtn.addEventListener('click', () => {
     sfx.fail();
-    resetAll('做错啦，自罚重来一次！', 'oops');
+    emitFeedback('miss', { label: `第 ${roundIndex + 1} 次没对上 · 重新开始` });
+    resetAll('这次没对上，先看一遍规则，再重新开始。', 'oops');
   });
 
   startBtn.addEventListener('click', () => {
@@ -205,7 +207,7 @@ export default {
   id: 'ifthen',
   title: '如果就',
   icon: '🚦',
-  howto: '先约定：红屏定住/绿屏跳一下/铃声蹲下，iPad 随机触发、间隔越来越短，做错重来！',
+  howto: '先约定：红屏双手停住/绿屏举手/铃声拍腿；坐着也能完成，没对上就看规则再重来。',
   init(container, api) {
     activeHandle = render(container, api);
   },

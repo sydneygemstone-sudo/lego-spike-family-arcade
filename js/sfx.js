@@ -42,9 +42,11 @@ function unlock() {
   unlocked = true;
 }
 
-['pointerdown', 'touchstart', 'keydown'].forEach((evt) => {
-  document.addEventListener(evt, unlock, { once: true, passive: true });
-});
+if (typeof document !== 'undefined') {
+  ['pointerdown', 'touchstart', 'keydown'].forEach((evt) => {
+    document.addEventListener(evt, unlock, { once: true, passive: true });
+  });
+}
 
 function noiseBuffer(c) {
   if (noiseBufferCache && noiseBufferCache.ctx === c) return noiseBufferCache.buffer;

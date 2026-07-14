@@ -48,27 +48,41 @@ export function destroy() { /* ... */ }
 
 `game.html?g=hunt` 访问即可加载对应关卡；未知/非法 `g` 参数会展示统一的错误态（吉祥物 oops + 返回首页按钮），不会白屏。
 
-`game.html?g=hunt&l=2` 的 `l` 是**关卡难度**（v3 新增，1|2|3，对应 L1/L2/L3）：缺省或非法值一律回退 `1`。
-每关 3 个 level，各自独立存档、独立星级；关卡模块**完全可以不读 `api.level`**，照样等价于只跑 L1，不会报错——
-现有六关在 v3 基础设施波暂时都还没用到 `api.level`，是否要按 level 生成不同布局/规则由各关卡自己的重做工作决定。
+`game.html?g=hunt&l=2&seed=family-run&v=4` 中，`l` 是任务编号，`seed` 是本次可复现运行的种子，`v` 是 1-10 的组合编号。
+六个游戏都由 `js/game-config.js` 定义为 10 个任务；缺省或非法 `l`/`v` 一律回退 `1`。每个任务各自独立存档、独立星级。
+同一个 `game + level + seed + variant` 会重建同一关卡；「换一套随机关卡」推进 variant，「重试」不会更换题面。
 
 ---
 
 ## 2. `api` 对象（`init(container, api)` 的第二个参数）
 
 ```ts
+interface SeededRandom {
+  seed: string;
+  next(): number;                         // [0, 1)
+  int(min: number, max: number): number;  // 含首尾
+  pick<T>(items: T[]): T | undefined;
+  shuffle<T>(items: T[]): T[];            // 返回副本，不改原数组
+  fork(label: string): SeededRandom;
+}
+
 interface GameApi {
   complete(stars: number): void;   // 通关，1-3 星（会被 clamp 到 0-3 并四舍五入）
   fail(reason?: string): void;     // 单次失败的轻量反馈（不结束关卡，不弹结算）
   sfx: SfxModule;                  // 见 §4，和全局共用同一个 AudioContext
   mascot: MascotInstance;          // 见 §3，顶部栏那只吉祥物，可直接调用
   store: StoreModule;              // 见 §5，只读用途为主（关卡通常不用自己存档，shell 已经在 complete() 里存了）
-  level: 1 | 2 | 3;                // v3 新增：当前是哪个难度，来自 URL 的 &l=（缺省/非法值已被 shell 归一化成 1）
+  level: 1|2|3|4|5|6|7|8|9|10;    // 当前任务，来自 URL 的 &l=
+  seed: string;                    // 当前 tab/run 的安全种子，可通过 URL 复现
+  variant: 1|2|3|4|5|6|7|8|9|10; // 当前组合，来自 URL 的 &v=
+  rand: SeededRandom;              // 当前任务的 layout 流；每次 init/retry 都从同一上下文重建
 }
 ```
 
+`shell.js` 自己的失败提示和结算文案使用独立的 `ui` 随机流，不会推进 `api.rand`。关卡模块只使用 `api.rand` 生成题面；不要用 `Math.random()` 混入可复现布局。
+
 ### `api.complete(stars)`
-- 调用后 shell 会：`store.setStars(gameId, api.level, stars)`（只保留该 level 历史最高分）→ 弹出统一结算弹窗（3 星逐颗弹出动画 + `sfx.star()` + 难度徽标 + 若三个 level 都拿到 ≥1 星/9 星满会自动解锁并提示铜/金徽章）→ 提供「挑战下一难度」（`stars>=1` 且 `level<3` 时才出现，跳到 `game.html?g=<id>&l=<level+1>`）、"重试"（重新调用你的 `destroy()` + `init()`，留在当前 level）和"返回首页"按钮。
+- 调用后 shell 会：`store.setStars(gameId, api.level, stars)`（只保留该任务历史最高分）→ 弹出统一结算弹窗（3 星逐颗弹出动画 + `sfx.star()` + 任务徽标 + 全部任务都完成/满星时更新铜/金徽章）→ 在存在后续任务时提供「挑战下一难度」、"重试"和"返回首页"按钮。
 - **关卡本身不需要、也不应该自己弹结算 UI**，调 `complete()` 就够了；也不需要自己判断"要不要出下一难度按钮"，shell 全权处理。
 - `stars` 传 0 也能调用（会展示"再接再厉"的弱鼓励文案，且不会出现"下一难度"按钮），但按 spec §3 六关设计通常最低是 1 星（"完成"）。
 
@@ -127,7 +141,7 @@ sfx.unlock();          // 手动触发 AudioContext 解锁（一般不用管，�
 
 ---
 
-## 5. `js/store.js` — 存档（v3 起 schema v2，每关 3 个 level 各自存星）
+## 5. `js/store.js` — 存档（schema v4，按游戏配置动态保存任务星级）
 
 ```js
 import { store, GAME_IDS } from '../js/store.js';
@@ -136,39 +150,39 @@ import { store, GAME_IDS } from '../js/store.js';
 
 | 方法 | 签名 | 说明 |
 |---|---|---|
-| `getStars` | `(gameId: string, level?: 1\|2\|3) => 0\|1\|2\|3` | 读取某关某个 level 的历史最高星级；非法 gameId 返回 0。**旧签名兼容**：不传 `level` 等价于 `level=1`（不会报错，但也不会返回"三个 level 里最高"，就是单纯的 L1） |
-| `setStars` | `(gameId, level: 1\|2\|3, stars: number) => { best, isNewBest, badgeUnlocked, badgeTier }` | 只保留该 level 历史最高分；`stars` 会被 clamp 到 0-3 并取整。三个 level 都 ≥1 星时解锁铜徽章，9 星全满时升级金徽章——两种情况 `badgeUnlocked` 都会设为该 `gameId`（否则为 `null`），`badgeTier` 是解锁/升级后的档位（`'bronze'\|'gold'\|null`）。**一般关卡不用自己调这个，shell 的 `api.complete()` 已经处理**（传的 level 就是 `api.level`） |
-| `getAllStars` | `() => Record<string, {l1,l2,l3}>` | 六关的 `{l1,l2,l3}` 星级快照（拷贝，改了不影响真实存档） |
-| `getGameTotal` | `(gameId: string) => number` | 该关三个 level 星数之和，0-9 |
-| `getBadgeTier` | `(id: string) => 'bronze'\|'gold'\|null` | 六关 id：`null` 未解锁 / `bronze` 三个 level 都 ≥1 星 / `gold` 9 星满。非六关 id（如 `'quiz'`）只有 `bronze`/`null` 两档 |
+| `getStars` | `(gameId: string, level?: number) => 0\|1\|2\|3` | 读取某游戏某任务的历史最高星级；非法任务回退任务 1，非法 gameId 返回 0。 |
+| `setStars` | `(gameId, level: number, stars: number) => { best, isNewBest, badgeUnlocked, badgeTier }` | 只保留该任务历史最高分；全部配置任务都 ≥1 星时解锁铜徽章，全部满星时升级金徽章。 |
+| `getAllStars` | `() => Record<string, Record<'lN', number>>` | 所有游戏的任务星级快照；六个游戏都包含 `l1` 到 `l10`。 |
+| `getGameTotal` | `(gameId: string) => number` | 该游戏全部任务星数之和。 |
+| `getBadgeTier` | `(id: string) => 'bronze'\|'gold'\|null` | 游戏 id：全部任务完成为铜、全部满星为金；非游戏 id 只有铜/未解锁。 |
 | `getBadges` | `() => string[]` | 已解锁的徽章 id 列表（`'hunt'` `'claw'` ... 或 `'quiz'`），铜/金都算"已解锁"，档位另查 `getBadgeTier` |
 | `hasBadge` | `(id: string) => boolean` | |
 | `addBadge` | `(id: string) => boolean` | 手动解锁一个徽章（返回是否为新解锁）；闪卡测验满分解锁 `'quiz'` 徽章用的就是这个 |
-| `getQuizBest` / `setQuizBest` | `() => number` / `(score: number) => { best, isNewBest }` | 闪卡测验最佳成绩，只保留历史最高分 |
-| `totalStars` / `maxStars` | `() => number` | 六关星级总和 / 满分（当前是 54 = 6 关 × 9 星） |
-| `resetAll` | `() => void` | 清空存档回到默认值（仅供开发调试用，UI 里没有暴露入口） |
+| `getQuizBest` / `setQuizBest` | `() => number` / `(score: number) => { best, isNewBest }` | 闪卡测验本次会话最佳成绩。 |
+| `totalStars` / `maxStars` | `() => number` | 全部任务星级总和 / 满分（当前为 180）。 |
+| `resetAll` | `() => void` | 清空本次会话进度（仅供开发调试用，UI 里没有暴露入口）。 |
 
-**存档 schema v2**（`localStorage` key 仍是 `lsfa_save_v1`，没改 key 名，靠内部 `version` 字段区分）：
+**会话 schema v4**（`sessionStorage` key 为 `lsfa_session_v1`；关闭标签页即清空，不需要账号）：
 
 ```json
 {
-  "version": 2,
+  "version": 4,
   "stars": {
-    "hunt":   { "l1": 0, "l2": 0, "l3": 0 },
-    "claw":   { "l1": 0, "l2": 0, "l3": 0 },
-    "macro":  { "l1": 0, "l2": 0, "l3": 0 },
-    "race":   { "l1": 0, "l2": 0, "l3": 0 },
-    "sort":   { "l1": 0, "l2": 0, "l3": 0 },
-    "bridge": { "l1": 0, "l2": 0, "l3": 0 }
+    "hunt":   { "l1": 0, "l2": 0, "l3": 0, "...": 0, "l10": 0 },
+    "claw":   { "l1": 0, "...": 0, "l10": 0 },
+    "macro":  { "l1": 0, "...": 0, "l10": 0 },
+    "race":   { "l1": 0, "...": 0, "l10": 0 },
+    "sort":   { "l1": 0, "...": 0, "l10": 0 },
+    "bridge": { "l1": 0, "...": 0, "l10": 0 }
   },
   "badges": [],
-  "quizBest": 0
+  "quizBest": 0,
+  "quizRoundSize": 3,
+  "legacyQuizBest": null
 }
 ```
 
-v1（`stars[gameId]` 是单个 0-3 数字）会在读取时**静默迁移**成 v2：旧值放进 `l1`，`l2`/`l3` 归零，立刻落盘；旧存档如果已经解锁过某关徽章（v1 语义是单 level 3 星），迁移后徽章依然保留（不会因为新 schema 下 `l2`/`l3` 是 0 而被摘掉），只是徽章档位按新数据算通常是 `bronze` 而非 `gold`。
-
-版本号防脏数据：`version` 不是 1 也不是 2、JSON 解析失败、字段类型不对，一律静默回退默认值，不会让旧格式数据炸页面。`localStorage` 不可用（隐私模式等）时也会静默降级为内存态默认值，不抛错。
+旧 `localStorage` 存档不会自动导入，避免把长期账号式进度带进一次性徽章会话。版本号无法识别、JSON 解析失败或字段类型不对时，一律静默回退默认值；`sessionStorage` 不可用时降级为内存态。
 
 ---
 
@@ -305,4 +319,4 @@ shell 的结算弹窗就是这套，关卡内如果需要一个"选择确认"弹
 3. 位移类三关（hunt/race/bridge）按 spec 用一个轻量 Canvas 走位渲染器（各关自己实现，不是全局依赖）；操作类三关（claw/macro/sort）用 DOM+CSS 动效即可，不需要 Canvas。
 4. 关内每次"犯错但关卡还没结束"调 `api.fail(reason)`；关卡真正结束（无论星级高低）调 `api.complete(stars)`，星级判定逻辑按 spec §3 各关那条"星级：..."描述实现。
 5. 用 `game.html?g=<你的id>` 手动过一遍：768×1024 和 1024×768 都点一遍，确认无 console error、退出重进存档保留、音效首次点击后能响应。
-6. 三个 level 分别按 `game.html?g=<你的id>&l=1` / `&l=2` / `&l=3` 各过一遍——`api.level` 读到的就是这个数字，L2/L3 的布局/规则差异由你自己在 `init()` 里根据 `api.level` 生成；确认结算弹窗的「挑战下一难度」按钮在 L1/L2 通关后正确出现、L3 通关后不出现。
+6. 按 `js/game-config.js` 声明的任务数量逐关验证；确认 `api.level`、存档、下一任务入口和最后一关结算都正确。

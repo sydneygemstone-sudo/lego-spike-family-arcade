@@ -1,0 +1,66 @@
+.knowledge-safety {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  width: calc(100% - 70px);
+  margin: 18px auto 28px;
+  padding: 14px 18px;
+  border: 1px solid #f0cf72;
+  border-radius: 17px;
+  color: #624a0b;
+  background: #fff8db;
+  box-shadow: 0 10px 24px rgba(82, 62, 8, .08);
+}
+
+.knowledge-safety strong {
+  padding: 6px 10px;
+  border-radius: 9px;
+  color: #fff;
+  background: #765d12;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.knowledge-safety span {
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.fc-panel[hidden] { display: none !important; }
+body.is-quiz-mode .knowledge-safety { display: none; }
+.fc-chip { min-height: 44px; }
+
+.flip-card {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.flip-card:focus-visible,
+.fc-tab-btn:focus-visible,
+.fc-chip:focus-visible {
+  outline: 4px solid var(--k-sun);
+  outline-offset: 4px;
+}
+
+.flip-card-face[aria-hidden="true"] { pointer-events: none; }
+
+@media (max-width: 650px) {
+  .knowledge-safety {
+    grid-template-columns: 1fr;
+    width: calc(100% - 16px);
+    margin: 14px auto 22px;
+  }
+
+  .knowledge-safety strong { justify-self: start; }
+}

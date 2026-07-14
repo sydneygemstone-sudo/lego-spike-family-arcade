@@ -22,11 +22,11 @@ function bigIconStyle() {
 function render(container, api) {
   let cancelled = false;
   const timers = [];
-  const { rand, sfx, mascot, countdownRing, completeRound } = api;
+  const { rand, sfx, mascot, countdownRing, completeRound, emitFeedback, glyph } = api;
 
   container.innerHTML = `
     <div class="brick-card brick-card--cat-sort">
-      <p class="title-sm" style="margin:0 0 8px;">📦 背包里先放几块积木？（家长实际准备好这些积木哦）</p>
+      <p class="title-sm" style="margin:0 0 8px;">装备确认 · 背包里先放几块积木？</p>
       <div class="flex-row gap-3" style="justify-content:center; align-items:center;">
         <button class="brick-btn brick-btn--gray brick-btn--icon" id="hb-minus">−</button>
         <div class="family-card-text" id="hb-total-num" style="min-width:80px;">8</div>
@@ -35,7 +35,7 @@ function render(container, api) {
     </div>
 
     <div class="family-stage" id="hb-stage">
-      <div class="family-card-icon" style="${bigIconStyle()}">🎒</div>
+      <div class="family-card-icon" style="${bigIconStyle()}">${glyph('pack')}</div>
       <div class="family-card-text">准备好了吗？</div>
       <div class="family-card-sub">点「开始传送」，背好积木沿地垫走，听到"叮"就放下一块</div>
       ${BELT_PATH_HTML}
@@ -44,14 +44,14 @@ function render(container, api) {
     <div class="flex-center" id="hb-beatdot"><div class="family-beat-dot"></div></div>
 
     <div class="flex-row gap-3" style="justify-content:center;" id="hb-start-row">
-      <button class="brick-btn brick-btn--blue brick-btn--lg" id="hb-start-btn">▶ 开始传送</button>
+      <button class="brick-btn brick-btn--blue brick-btn--lg" id="hb-start-btn">开始传送</button>
     </div>
 
     <div class="brick-card brick-card--cat-sort" id="hb-answer-card" style="display:none;">
-      <p class="title-sm" style="margin:0 0 8px;">🤔 传送带停了！包里还剩几块？</p>
+      <p class="title-sm" style="margin:0 0 8px;">计数检查 · 包里还剩几块？</p>
       <div class="family-card-row" id="hb-answer-row"></div>
       <div class="flex-row gap-3" style="justify-content:center; margin-top:12px;">
-        <button class="brick-btn brick-btn--green brick-btn--lg" id="hb-submit-btn" disabled>✅ 确认答案</button>
+        <button class="brick-btn brick-btn--green brick-btn--lg" id="hb-submit-btn" disabled>确认答案</button>
       </div>
       <p class="text-center" id="hb-answer-result" style="min-height:1.4em; font-weight:800;"></p>
     </div>
@@ -87,9 +87,9 @@ function render(container, api) {
     dropped = 0;
     answerCard.style.display = 'none';
     startRow.style.display = 'flex';
-    startBtn.textContent = '▶ 开始传送';
+    startBtn.textContent = '开始传送';
     stage.innerHTML = `
-      <div class="family-card-icon" style="${bigIconStyle()}">🎒</div>
+      <div class="family-card-icon" style="${bigIconStyle()}">${glyph('pack')}</div>
       <div class="family-card-text">准备好了吗？</div>
       <div class="family-card-sub">背好 ${total} 块积木，点「开始传送」出发</div>
       ${BELT_PATH_HTML}
@@ -98,9 +98,10 @@ function render(container, api) {
 
   async function runBelt() {
     running = true;
+    emitFeedback('action', { label: '传送中 · 心里更新计数器' });
     startRow.style.display = 'none';
     stage.innerHTML = `
-      <div class="family-card-icon" style="${bigIconStyle()}">🚶</div>
+      <div class="family-card-icon" style="${bigIconStyle()}">${glyph('walk')}</div>
       <div class="family-card-text">传送带启动……</div>
       <div class="family-card-sub">心里默数，听到"叮"就放下一块</div>
       ${BELT_PATH_HTML}
@@ -124,7 +125,7 @@ function render(container, api) {
   function stopBelt() {
     running = false;
     stage.innerHTML = `
-      <div class="family-card-icon" style="${bigIconStyle()}">🛑</div>
+      <div class="family-card-icon" style="${bigIconStyle()}">${glyph('stop')}</div>
       <div class="family-card-text">传送带停了！</div>
       <div class="family-card-sub">一共背了 ${total} 块，你觉得包里还剩几块？</div>
     `;
@@ -159,16 +160,18 @@ function render(container, api) {
     if (chosenAnswer === correct) {
       sfx.success();
       answerResult.style.color = 'var(--lego-green)';
-      answerResult.textContent = `✅ 答对啦！${total} − ${dropped} = ${correct} 块`;
-      mascot.say('工作记忆满分，算得又快又准！', 'cheer');
+      answerResult.textContent = `答对了：${total} − ${dropped} = ${correct} 块`;
+      mascot.say('这一轮计数和减法都对上了！说说你是怎么检查的。', 'cheer');
+      emitFeedback('hit', { label: '计数正确' });
+      completeRound();
     } else {
       sfx.fail();
       answerResult.style.color = 'var(--lego-red)';
-      answerResult.textContent = `❌ 差一点，正确答案是 ${total} − ${dropped} = ${correct} 块`;
+      answerResult.textContent = `再检查一次。正确答案是 ${total} − ${dropped} = ${correct} 块`;
       mascot.say('没关系，再试一次，专心数"叮"的次数！', 'oops');
+      emitFeedback('miss', { label: '计数错误 · 本轮不打卡' });
     }
     submitBtn.disabled = true;
-    completeRound();
     timers.push(setTimeout(() => { if (!cancelled) newRoundReset(); }, 2400));
   });
 

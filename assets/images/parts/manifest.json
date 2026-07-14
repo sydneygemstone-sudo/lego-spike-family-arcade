@@ -82,15 +82,14 @@
     "status": "ok"
   },
   {
-    "card": "Worm Gear",
-    "file": "images/parts/te_9_worm_gear.png",
-    "partNum": "4716",
-    "partName": "Technic, Gear Worm Screw, Long",
-    "color": "Light Bluish Gray",
-    "inSet45678": false,
-    "source": "https://img.bricklink.com/ItemImage/PN/86/4716.png",
-    "status": "replaced",
-    "note": "45678 套装内实际不含蜗杆，用通用 LEGO Technic 蜗杆 4716 作教学参考图"
+    "card": "Angular Beam",
+    "file": "images/parts/te_9_angular_beam.png",
+    "partNum": "45678 inventory",
+    "partName": "Technic Angular Beam",
+    "color": "Black",
+    "inSet45678": true,
+    "source": "https://assets.education.lego.com/v3/assets/blt293eea581807678a/blt28cad37f1f002fd3/5f8801b982eaa522ca601c89/le_spike_prime_element_overview.pdf?locale=en-us",
+    "status": "official-inventory"
   },
   {
     "card": "Bushing",
@@ -113,14 +112,14 @@
     "status": "ok"
   },
   {
-    "card": "Steel Castor Wheel",
-    "file": "images/parts/te_12_steel_castor.png",
-    "partNum": "52629",
-    "partName": "Wheel Ball, Hard Plastic 19mm D.",
-    "color": "White",
+    "card": "Ball & Cup Connector",
+    "file": "images/parts/te_12_ball_socket.png",
+    "partNum": "45678 inventory",
+    "partName": "Technic Ball Socket Beam and Ball",
+    "color": "Medium Azure / White",
     "inSet45678": true,
-    "source": "https://img.bricklink.com/ItemImage/PN/1/52629.png",
-    "status": "ok"
+    "source": "https://assets.education.lego.com/v3/assets/blt293eea581807678a/blt28cad37f1f002fd3/5f8801b982eaa522ca601c89/le_spike_prime_element_overview.pdf?locale=en-us",
+    "status": "official-inventory"
   },
   {
     "card": "Axle Connector",
@@ -154,15 +153,14 @@
     "note": "组合件 4185c01（已装轮胎，见 2815 黑胎）的官方图仅 80x60px 偏小，改用同一皮带轮单体图（192x192px）更清晰；套装另含黄色大皮带 x90（Rubber Belt Extra Large）未单独出图"
   },
   {
-    "card": "Turntable",
-    "file": "images/parts/te_16_turntable.png",
-    "partNum": "2856c01",
-    "partName": "Technic Turntable 56 Tooth Extended Arms Complete Assembly",
-    "color": "Black",
-    "inSet45678": false,
-    "source": "https://img.bricklink.com/ItemImage/PN/11/2856c01.png",
-    "status": "replaced",
-    "note": "45678 套装内不含回转盘，用通用 LEGO Technic 回转转盘 2856c01 作教学参考图"
+    "card": "I-Frame (3x5)",
+    "file": "images/parts/te_16_i_frame.png",
+    "partNum": "45678 inventory",
+    "partName": "Technic I-Frame 3 x 5",
+    "color": "Light Bluish Gray",
+    "inSet45678": true,
+    "source": "https://assets.education.lego.com/v3/assets/blt293eea581807678a/blt28cad37f1f002fd3/5f8801b982eaa522ca601c89/le_spike_prime_element_overview.pdf?locale=en-us",
+    "status": "official-inventory"
   },
   {
     "card": "Technic Lever",
@@ -175,26 +173,34 @@
     "status": "ok"
   },
   {
-    "card": "Universal Joint",
-    "file": "images/parts/te_18_universal_joint.png",
-    "partNum": "62520c01",
-    "partName": "Technic, Universal Joint 3L (Complete Assembly)",
-    "color": "Light Bluish Gray",
-    "inSet45678": false,
-    "source": "https://img.bricklink.com/ItemImage/PN/86/62520c01.png",
-    "status": "replaced",
-    "note": "45678 套装内不含万向节；官方设计编号 61903，BrickLink 目录号为 62520c01，用其作教学参考图"
+    "card": "Wire Clip with Cross Hole",
+    "file": "images/parts/te_18_wire_clip.png",
+    "partNum": "45678 inventory",
+    "partName": "Wire Clip with Cross Hole",
+    "color": "Yellow",
+    "inSet45678": true,
+    "source": "https://assets.education.lego.com/v3/assets/blt293eea581807678a/blt28cad37f1f002fd3/5f8801b982eaa522ca601c89/le_spike_prime_element_overview.pdf?locale=en-us",
+    "status": "official-inventory"
   },
   {
-    "card": "Clutch Gear",
-    "file": "images/parts/te_19_clutch_gear.png",
-    "partNum": "60c01",
-    "partName": "Technic, Gear 24 Tooth Clutch",
-    "color": "White",
-    "inSet45678": false,
-    "source": "https://img.bricklink.com/ItemImage/PN/1/60c01.png",
-    "status": "replaced",
-    "note": "45678 套装内不含滑摩离合齿轮，用通用白色 24 齿离合齿轮 60c01（新版设计号 76244）作教学参考图"
+    "card": "Brick 2x4 with Cross Holes",
+    "file": "images/parts/te_19_cross_hole_brick.png",
+    "partNum": "45678 signature element",
+    "partName": "Brick 2 x 4 with Cross Axle Holes",
+    "color": "Yellow",
+    "inSet45678": true,
+    "source": "https://education.lego.com/en-us/teacher-resources/lego-education-spike-prime/support-technical-info/lego-education-spike-prime-support-technical-info-product-info/",
+    "status": "official-product"
+  },
+  {
+    "card": "Large Base Plate with Holes",
+    "file": "images/parts/te_21_base_plate.png",
+    "partNum": "45678 inventory",
+    "partName": "Large Technic Base Plate with Holes",
+    "color": "Yellow",
+    "inSet45678": true,
+    "source": "https://assets.education.lego.com/v3/assets/blt293eea581807678a/blt28cad37f1f002fd3/5f8801b982eaa522ca601c89/le_spike_prime_element_overview.pdf?locale=en-us",
+    "status": "official-inventory"
   },
   {
     "card": "Large Motor (Hardware)",
@@ -261,5 +267,25 @@
     "source": "https://img.bricklink.com/ItemImage/PN/3/53444c01.png",
     "status": "replaced",
     "note": "原图顶部叠有中文残缺文字，已替换为干净官方产品图"
+  },
+  {
+    "card": "Large Hub Rechargeable Battery",
+    "file": "images/parts/hw_7_hub_battery.png",
+    "partNum": "45610",
+    "partName": "LEGO Technic Large Hub Rechargeable Battery",
+    "color": "Yellow",
+    "inSet45678": true,
+    "source": "https://education.lego.com/en-gb/products/lego-technic-large-hub-battery/45610/",
+    "status": "official-product"
+  },
+  {
+    "card": "Micro USB Cable",
+    "file": "images/parts/hw_8_micro_usb.png",
+    "partNum": "45678 inventory",
+    "partName": "USB-A to Micro USB Cable",
+    "color": "White",
+    "inSet45678": true,
+    "source": "https://assets.education.lego.com/v3/assets/blt293eea581807678a/blt28cad37f1f002fd3/5f8801b982eaa522ca601c89/le_spike_prime_element_overview.pdf?locale=en-us",
+    "status": "official-inventory"
   }
 ]

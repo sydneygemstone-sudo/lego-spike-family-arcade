@@ -1,7 +1,6 @@
 /* ==========================================================================
-   blocks.js
-   scratchblocks 源码映射表 —— 每张"积木类"闪卡（MOTORS / MOVEMENT / SENSORS
-   的 wait-until / DISPLAY / EVENTS / CONTROL）对应一段 scratchblocks 语法。
+   Robotics Adventure block catalogue.
+   Stable scratchblocks source used by the redesigned card/quiz visual layer.
 
    Key = 闪卡 scaledFlashcards 数组里的 "id" 字段（app.js 第 61 行起）。
    Value = scratchblocks 源码字符串，渲染出的文字/参数必须与卡片英文 caption
@@ -106,4 +105,16 @@ if (typeof module !== "undefined" && module.exports) {
 // 只改了本项目里的这份拷贝，源目录 spike_prime_flashcards/blocks.js 未改动。
 if (typeof window !== "undefined") {
     window.blockScripts = blockScripts;
+    // A shared palette hint for any future custom renderer. Scratchblocks remains
+    // the accessible, battle-tested SVG renderer; this metadata keeps its output
+    // aligned with the new deep-navy / coral / teal / gold visual system.
+    window.blockVisualTheme = Object.freeze({
+        outline: "#102A43",
+        motors: "#3E7CB1",
+        movement: "#FF6B5F",
+        sensors: "#18B6A4",
+        display: "#7C63D5",
+        events: "#FFC857",
+        control: "#FF8B42",
+    });
 }

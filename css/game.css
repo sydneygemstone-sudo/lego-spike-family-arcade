@@ -1,74 +1,279 @@
-/* css/game.css — game.html 关卡容器页面级样式 */
-
-.game-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+/* Mission Control — programming game shell and six-game visual system */
+:root {
+  --mc-bg: #061426;
+  --mc-bg-2: #0a2038;
+  --mc-panel: rgba(13, 35, 58, .92);
+  --mc-panel-2: rgba(18, 47, 75, .88);
+  --mc-line: rgba(143, 213, 239, .18);
+  --mc-line-strong: rgba(118, 232, 241, .42);
+  --mc-text: #effbff;
+  --mc-muted: #9cb8ca;
+  --mc-cyan: #58e1ec;
+  --mc-blue: #4d83ff;
+  --mc-yellow: #ffcd45;
+  --mc-green: #62e9a6;
+  --mc-red: #ff6575;
+  --mc-violet: #a37cff;
+  --mc-radius: 22px;
+  --mc-shadow: 0 22px 60px rgba(0, 8, 20, .34);
 }
 
+html, body { min-height: 100%; background: var(--mc-bg); }
+body {
+  color: var(--mc-text);
+  background:
+    radial-gradient(circle at 5% 0%, rgba(64, 167, 216, .18), transparent 32rem),
+    radial-gradient(circle at 100% 15%, rgba(107, 78, 220, .15), transparent 30rem),
+    linear-gradient(145deg, #061426 0%, #0a1d33 56%, #071829 100%);
+}
+body::before {
+  opacity: .22;
+  background-image: linear-gradient(rgba(95, 184, 217, .14) 1px, transparent 1px), linear-gradient(90deg, rgba(95, 184, 217, .14) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(#000, transparent 90%);
+}
+
+.game-page { min-height: 100dvh; display: flex; flex-direction: column; }
 .game-topbar {
-  display: flex;
+  min-height: 74px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--paper-0);
-  box-shadow: 0 2px 10px rgba(0,0,0,.08);
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  gap: 14px;
+  padding: max(12px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 12px max(20px, env(safe-area-inset-left));
+  position: sticky; top: 0; z-index: 50;
+  border-bottom: 1px solid var(--mc-line);
+  background: rgba(4, 17, 33, .88);
+  box-shadow: 0 12px 34px rgba(0, 8, 18, .28);
+  backdrop-filter: blur(18px) saturate(140%);
 }
-
-.game-topbar-mascot {
-  flex-shrink: 0;
+.game-topbar::after {
+  content: "MISSION CONTROL / PROGRAM LAB";
+  position: absolute; right: 22px; bottom: 5px;
+  color: rgba(111, 220, 235, .38); font-size: 8px; font-weight: 850; letter-spacing: .2em;
 }
-.game-topbar-mascot .spike-mascot { width: 64px; }
-
-.game-topbar-title {
-  flex: 1;
-  min-width: 0;
+.game-topbar-mascot { display: none; }
+.game-topbar-mascot .spike-mascot { width: 48px; }
+.game-topbar-title { min-width: 0; }
+.game-topbar-title h1 { margin: 0; color: var(--mc-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: clamp(18px, 2.2vw, 27px); font-weight: 850; }
+.game-topbar-title > .flex-row { align-items: center !important; }
+.game-topbar .brick-btn {
+  --btn-face-dark: #07182d;
+  min-height: 44px !important; padding: 9px 15px; border: 1px solid var(--mc-line-strong); border-radius: 13px;
+  background: #0d2b49; color: var(--mc-text); box-shadow: none;
 }
-.game-topbar-title h1 {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.star--sm { font-size: 20px; }
+.game-topbar .brick-btn::before { display: none; }
+.game-topbar .brick-btn:hover { background: #143d61; transform: translateY(-1px); }
 .star-rating--sm { gap: 2px; }
-
-/* 难度徽标（L1/L2/L3），顶部栏标题旁 + 结算弹窗都用同一份样式 */
+.star--sm { font-size: 16px; color: #31506b; }
+.star--sm.star--filled { color: var(--mc-yellow); filter: drop-shadow(0 0 6px rgba(255, 205, 69, .45)); }
 .level-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 30px;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: var(--lego-blue);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 800;
-  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 42px; height: 24px; padding: 0 10px; border: 1px solid rgba(92, 230, 240, .45); border-radius: 8px;
+  background: rgba(75, 206, 224, .12); color: #a9f6fb; font-size: 11px; font-weight: 850; letter-spacing: .08em;
 }
-.level-chip--modal {
-  display: inline-flex;
-  margin: 4px 0 10px;
+.level-chip--modal { margin: 4px 0 10px; }
+
+.game-root { flex: 1; width: 100%; max-width: 1540px; margin: 0 auto; padding: 18px 20px max(24px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; justify-content: safe center; }
+.game-root .brick-card,
+.game-root .hunt-stage-card,
+.game-root .hunt-tray-card,
+.game-root .hunt-seq-card,
+.game-root .claw-stage-card,
+.game-root .claw-controls,
+.game-root .macro-section,
+.game-root .race-stage-card,
+.game-root .race-tray-card,
+.game-root .sort-belt-card,
+.game-root .sort-program-card,
+.game-root .bridge-stage-card,
+.game-root .bridge-console-card {
+  border: 1px solid var(--mc-line) !important;
+  border-radius: var(--mc-radius) !important;
+  background: linear-gradient(155deg, rgba(18, 48, 77, .94), rgba(7, 25, 44, .94)) !important;
+  color: var(--mc-text) !important;
+  box-shadow: var(--mc-shadow) !important;
+}
+.game-root .brick-card::before { display: none !important; }
+.game-root h2, .game-root h3, .game-root .title-sm, .game-root .title-md { color: var(--mc-text) !important; }
+.game-root .text-muted { color: var(--mc-muted) !important; }
+
+.game-root .brick-btn {
+  min-width: 44px; min-height: 44px !important; padding: 9px 16px; border: 1px solid rgba(255,255,255,.13); border-radius: 13px;
+  background: #183b5c; color: #f5fcff; box-shadow: 0 5px 14px rgba(0,8,20,.22); font-weight: 820;
+}
+.game-root .brick-btn::before { display: none; }
+.game-root .brick-btn--green { background: linear-gradient(135deg, #168b62, #25b578); }
+.game-root .brick-btn--blue { background: linear-gradient(135deg, #2871dc, #4d80ff); }
+.game-root .brick-btn--purple { background: linear-gradient(135deg, #694bd2, #9569ef); }
+.game-root .brick-btn--yellow { background: linear-gradient(135deg, #d99717, #f4b52e); color: #10213a; }
+.game-root .brick-btn--gray { background: #16334e; color: #cfe6f1; }
+.game-root .brick-btn:disabled { opacity: .36; filter: saturate(.45); box-shadow: none; }
+.game-root .brick-btn:focus-visible { outline: 3px solid var(--mc-cyan); outline-offset: 3px; }
+
+/* Blocks become console commands, not toy bricks. */
+.game-root .blocks-tray, .game-root .blocks-seq { border-color: var(--mc-line) !important; background: rgba(3, 17, 32, .52) !important; }
+.game-root .blocks-seq { box-shadow: inset 0 0 0 1px rgba(90, 196, 226, .08); }
+.game-root .brick-block { border-radius: 12px !important; border: 1px solid rgba(255,255,255,.22) !important; box-shadow: 0 4px 12px rgba(0,5,15,.2) !important; }
+.game-root .brick-block::before { display: none !important; }
+
+/* Grid Quest */
+.hunt-page { gap: 16px !important; }
+.hunt-stage-card { padding: 18px !important; }
+.hunt-title, .hunt-brief, .hunt-status, .hunt-budget { color: var(--mc-text) !important; }
+.hunt-brief { color: var(--mc-muted) !important; font-weight: 650 !important; }
+.hunt-mission-no { border: 1px solid var(--mc-line-strong); border-radius: 8px !important; background: rgba(88,225,236,.1) !important; color: #b9f8fb !important; letter-spacing: .08em; }
+.hunt-grid { border: 1px solid rgba(107, 224, 235, .36) !important; border-radius: 20px !important; background: #07182d !important; box-shadow: 0 18px 44px rgba(0, 5, 16, .42), inset 0 0 40px rgba(44, 150, 196, .08) !important; }
+.hunt-teaching { border: 1px solid var(--mc-line) !important; background: rgba(18, 53, 85, .72) !important; color: #cfe5f0 !important; }
+.hunt-teaching strong { color: var(--mc-cyan) !important; }
+.hunt-lock-state { border: 1px solid rgba(175, 128, 255, .35); background: rgba(137, 91, 230, .14) !important; color: #cbb5ff !important; }
+.hunt-lock-state.is-open { border-color: rgba(98,233,166,.4); background: rgba(36,170,113,.15) !important; color: #8cf1bd !important; }
+.hunt-crate { border-color: #e1a15c !important; background: linear-gradient(145deg, #9b5426, #5f2e19) !important; color: #ffe2ae !important; }
+.hunt-switch { border-color: #b48117 !important; background: #ffcb42 !important; }
+.hunt-switch--on { border-color: #4dd896 !important; background: #63eeaa !important; }
+
+/* Claw */
+.claw-layout { gap: 16px !important; }
+.claw-stage-card { padding: 18px !important; }
+.claw-scene-outer { border: 1px solid var(--mc-line); border-radius: 18px !important; background: #07172f !important; }
+.claw-controls { padding: 16px !important; }
+.claw-formula, .claw-result-text, .claw-attempts { color: var(--mc-text) !important; }
+.claw-result-text, .claw-attempts { color: var(--mc-muted) !important; }
+.claw-force-section { border: 1px solid var(--mc-line); background: rgba(4,18,34,.55) !important; }
+.claw-clue { border: 1px solid var(--mc-line) !important; background: #102f4d !important; color: #dff7ff; }
+.claw-reference { color: var(--mc-muted) !important; }
+.claw-dial-readout { color: var(--mc-text) !important; }
+.claw-dial-hit { min-height: 44px; }
+
+/* Macro */
+.macro-page { gap: 16px !important; }
+.macro-left, .macro-right { gap: 14px !important; }
+.macro-section { padding: 16px !important; }
+.macro-stage { border: 1px solid var(--mc-line); border-radius: 18px !important; background: #07172f !important; }
+.macro-trail-cell { border: 1px solid var(--mc-line) !important; border-radius: 10px !important; background: #102f4d !important; color: #bfeefa !important; }
+.macro-trail-cell--active { border-color: var(--mc-yellow) !important; background: rgba(255,205,69,.18) !important; color: #fff3be !important; }
+.macro-trail-cell--done { border-color: var(--mc-green) !important; background: rgba(98,233,166,.14) !important; }
+.macro-budget { border: 1px solid rgba(163,124,255,.42) !important; background: rgba(113,77,213,.13) !important; color: #d7c7ff !important; }
+.macro-expand-stage { border: 1px dashed rgba(255,205,69,.52) !important; background: rgba(255,205,69,.08) !important; }
+
+/* Race */
+.race-layout { gap: 16px !important; }
+.race-stage-card, .race-tray-card { padding: 16px !important; }
+.race-scene-outer { justify-content: flex-start !important; border: 1px solid var(--mc-line); border-radius: 18px !important; background: #07172f !important; padding-top: 10px !important; }
+.race-flag-label { border: 1px solid var(--mc-line-strong) !important; border-radius: 8px !important; background: #0e2a47 !important; color: #dffaff !important; }
+.race-cell-badge { background: rgba(5,20,36,.84) !important; color: #8fb1c5 !important; }
+.race-cell-empty { border-color: #426984 !important; background: rgba(26,67,96,.28); }
+.race-cell-pit { border: 1px solid #ffb447 !important; background: repeating-linear-gradient(135deg,#09182d 0 8px,#e19622 8px 16px) !important; }
+.race-tray-chip, .race-block-chip { border: 1px solid rgba(255,255,255,.2); box-shadow: 0 5px 14px rgba(0,8,20,.28) !important; }
+.race-delete-x::before { content: ""; position: absolute; inset: -8px; }
+
+/* Sort */
+.sort-page { gap: 16px !important; }
+.sort-belt-card, .sort-program-card { padding: 16px !important; }
+.sort-stage { border: 1px solid var(--mc-line); border-radius: 18px !important; background: #07172f !important; }
+.sort-bin { border-width: 1px !important; border-radius: 12px !important; background: #0f2f4d !important; }
+.sort-bin-count { color: var(--mc-text) !important; }
+.sort-bin-label { color: var(--mc-muted) !important; }
+.sort-segment { border: 1px solid rgba(163,124,255,.3) !important; background: rgba(100,62,194,.11) !important; }
+.sort-segments { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.sort-stage { justify-content: flex-start !important; }
+.sort-stage-inner { flex: 0 0 auto !important; }
+.sort-loop-row .brick-btn--icon { width: 44px !important; min-width: 44px !important; min-height: 44px !important; }
+.sort-section-label, .sort-status-text { color: #d9eef6 !important; }
+.sort-formula-text { color: #d8c8ff !important; }
+.sort-formula-text.sort-formula--ok { color: var(--mc-green) !important; }
+.sort-formula-text.sort-formula--bad { color: var(--mc-yellow) !important; }
+
+/* Bridge */
+.bridge-page { gap: 16px !important; }
+.bridge-stage-card, .bridge-console-card { padding: 16px !important; }
+.bridge-title, .bridge-brief, .bridge-status, .bridge-revs { color: var(--mc-text) !important; }
+.bridge-brief { color: var(--mc-muted) !important; }
+.bridge-level { border: 1px solid var(--mc-line-strong); border-radius: 8px !important; background: rgba(88,225,236,.1) !important; color: #baf7fb !important; }
+.bridge-scene-outer { border: 1px solid var(--mc-line); border-radius: 18px !important; background: #07172f !important; }
+.bridge-battery { border: 1px solid rgba(98,233,166,.3); background: rgba(35,168,112,.14) !important; color: #8df2be !important; }
+.bridge-battery.is-hot { border-color: rgba(255,101,117,.35); background: rgba(211,57,74,.14) !important; color: #ff9daa !important; }
+.bridge-wheel-spec { border: 1px solid var(--mc-line) !important; background: #0f2d49 !important; }
+.bridge-leg { border: 1px solid var(--mc-line) !important; background: rgba(5,20,36,.5) !important; }
+.bridge-leg-title { color: var(--mc-muted) !important; }
+.bridge-leg-title strong { color: var(--mc-cyan) !important; }
+.bridge-wheel-btn { border: 1px solid var(--mc-line) !important; background: #112f4a !important; color: #c7dfeb !important; }
+.bridge-wheel-btn { min-width: 44px !important; min-height: 44px !important; }
+.bridge-wheel-btn.is-active { border-color: var(--wheel-color) !important; background: color-mix(in srgb,var(--wheel-color) 16%,#0c2942) !important; box-shadow: 0 0 14px color-mix(in srgb,var(--wheel-color) 35%,transparent) !important; }
+.bridge-metrics { border: 1px solid rgba(255,205,69,.22); background: rgba(255,205,69,.08) !important; color: #ffe797 !important; }
+
+.modal-overlay { backdrop-filter: blur(12px); background: rgba(0,10,23,.72) !important; }
+.modal-card { border: 1px solid var(--mc-line-strong) !important; border-radius: 26px !important; background: linear-gradient(155deg,#12324f,#071a2e) !important; color: var(--mc-text) !important; box-shadow: 0 30px 90px rgba(0,0,0,.52) !important; }
+.modal-card .text-muted { color: var(--mc-muted) !important; }
+
+/* On narrow portrait screens the primary action remains reachable while the
+ * child scrolls through a long programming console. */
+.game-action-dock { z-index: 18; }
+
+@media (min-width: 820px) {
+  .hunt-page, .bridge-page { grid-template-columns: minmax(430px, 1.12fr) minmax(360px, .88fr) !important; align-items: stretch; }
+  .claw-layout, .sort-page, .race-layout, .macro-page { flex-direction: row !important; align-items: stretch !important; }
+  .claw-stage-card, .claw-controls, .sort-belt-card, .sort-program-card, .race-stage-card, .race-controls, .macro-left, .macro-right { flex: 1 1 0; min-width: 0; }
 }
 
-.game-root {
-  flex: 1;
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  /* 场景容器改自适应高度后，内容变矮的关卡（如 race）在纵向宽高比视口（768x1024）会在
-   * 底部空出一大截。用 safe center 把内容整体居中分摊留白（顶部/底部各一点，不再是
-   * 一坨死白）；"safe" 保底——一旦内容比视口还高就自动退回 flex-start 顶对齐，不会把
-   * 头部标题推出视口外，不支持 safe 关键字的旧浏览器也会整条声明失效、退回默认顶对齐。 */
-  justify-content: safe center;
+@media (max-width: 819px) {
+  .game-root { padding: 14px 14px max(22px, env(safe-area-inset-bottom)); justify-content: flex-start; }
+  .game-topbar { grid-template-columns: auto minmax(0,1fr); padding-inline: 14px; }
+  .game-topbar::after { display: none; }
+  .hunt-grid { width: min(90vw, 52vh, 540px) !important; }
+  .bridge-wheel-guide { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .game-action-dock {
+    position: sticky;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 8px;
+    border: 1px solid rgba(88,225,236,.22);
+    border-radius: 16px;
+    background: rgba(6,24,42,.94);
+    box-shadow: 0 14px 38px rgba(0,5,15,.42);
+    backdrop-filter: blur(12px);
+  }
 }
 
-@media (max-width: 700px) {
-  .game-topbar { flex-wrap: wrap; }
-  .game-topbar-title { order: 3; flex-basis: 100%; }
+@media (max-width: 819px) and (orientation: portrait) {
+  .game-root { padding-bottom: max(108px, calc(92px + env(safe-area-inset-bottom))); }
+  .game-action-dock {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 80;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+  }
+  .game-action-dock .brick-btn {
+    flex: 1 1 auto;
+    min-height: 50px;
+    margin: 0;
+  }
+  .game-action-dock .brick-btn--sm { flex: 0 0 auto; }
+}
+
+@media (max-width: 620px) {
+  .game-topbar { min-height: 64px; grid-template-columns: auto minmax(0,1fr); }
+  .game-topbar-title { display: block; order: initial; flex-basis: auto; }
+  .game-topbar-title h1 { font-size: 17px; }
+  .game-topbar .brick-btn { min-height: 38px; padding: 7px 10px; }
+  .game-root { padding-inline: 10px; }
+  .bridge-wheel-guide { grid-template-columns: 1fr !important; }
+  .sort-segments { grid-template-columns: 1fr !important; }
+}
+
+@media (min-width: 700px) and (max-height: 840px) {
+  .game-topbar { min-height: 64px; padding-block: 8px; }
+  .game-root { padding-block: 12px; justify-content: flex-start; }
+  .game-root .brick-card, .game-root .hunt-stage-card, .game-root .claw-stage-card, .game-root .claw-controls, .game-root .macro-section, .game-root .race-stage-card, .game-root .race-tray-card, .game-root .sort-belt-card, .game-root .sort-program-card, .game-root .bridge-stage-card, .game-root .bridge-console-card { border-radius: 17px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-root *, .game-root *::before, .game-root *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
