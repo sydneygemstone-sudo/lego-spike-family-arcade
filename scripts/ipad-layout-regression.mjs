@@ -94,6 +94,7 @@ for (const viewport of viewports) {
         claw = {
           panelsOverlap: Math.min(panelRect.right, forceRect.right) - Math.max(panelRect.left, forceRect.left) > 1
             && Math.min(panelRect.bottom, forceRect.bottom) - Math.max(panelRect.top, forceRect.top) > 1,
+          panelsStacked: forceRect.top >= panelRect.bottom - 1,
           buttons,
         };
       }
@@ -123,6 +124,7 @@ for (const viewport of viewports) {
       }
       if (audit.claw) {
         assert.equal(audit.claw.panelsOverlap, false);
+        if (viewport.height > viewport.width) assert.equal(audit.claw.panelsStacked, true);
         assert.equal(audit.claw.buttons.length, 5);
         audit.claw.buttons.forEach((button) => assert.deepEqual(button, {
           label: button.label,
@@ -141,34 +143,38 @@ for (const viewport of viewports) {
 {
   const context = await browser.newContext({ viewport: { width: 820, height: 1180 } });
   await context.addInitScript(() => {
-    Object.defineProperty(navigator, 'canShare', { configurable: true, value: ({ files }) => files?.[0]?.type === 'application/pdf' });
-    Object.defineProperty(navigator, 'share', {
-      configurable: true,
-      value: async ({ files, title }) => { window.__printKitShare = { name: files?.[0]?.name, type: files?.[0]?.type, title }; },
-    });
+    window.print = () => { window.__printKitCalled = true; };
   });
   const page = await context.newPage();
   await page.goto(`${base}/print-kit.html`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('#pdf-frame');
+  await page.waitForSelector('.print-page[data-page="26"] img');
+  await page.waitForFunction(() => [...document.querySelectorAll('.print-page img')]
+    .every((image) => image.complete && image.naturalWidth > 0));
   const startUrl = page.url();
-  await page.locator('#share-pdf').click();
-  await page.waitForFunction(() => window.__printKitShare?.type === 'application/pdf');
+  await page.locator('#print-pages').click();
+  await page.waitForFunction(() => window.__printKitCalled === true);
   const printAudit = await page.evaluate(() => ({
     url: location.href,
     overflow: document.documentElement.scrollWidth > innerWidth + 1,
-    frameSrc: document.querySelector('#pdf-frame')?.src,
-    downloadHref: document.querySelector('#download-pdf')?.href,
+    pageCount: document.querySelectorAll('.print-page').length,
+    failedImages: [...document.querySelectorAll('.print-page img')]
+      .filter((image) => !image.complete || image.naturalWidth === 0).length,
+    iframeCount: document.querySelectorAll('iframe').length,
+    pdfLinks: [...document.querySelectorAll('a[href]')]
+      .filter((link) => /\.pdf(?:$|[?#])/i.test(link.href)).length,
     backHref: document.querySelector('.print-kit-back')?.href,
-    share: window.__printKitShare,
+    printCalled: window.__printKitCalled,
     status: document.querySelector('#print-kit-status')?.textContent,
   }));
   assert.equal(printAudit.url, startUrl);
   assert.equal(printAudit.overflow, false);
-  assert.match(printAudit.frameSrc, /Lego_Spike_Prime_Flashcards_And_Games\.pdf/);
-  assert.match(printAudit.downloadHref, /Lego_Spike_Prime_Flashcards_And_Games\.pdf/);
+  assert.equal(printAudit.pageCount, 26);
+  assert.equal(printAudit.failedImages, 0);
+  assert.equal(printAudit.iframeCount, 0);
+  assert.equal(printAudit.pdfLinks, 0);
   assert.match(printAudit.backHref, /index\.html$/);
-  assert.equal(printAudit.share.type, 'application/pdf');
-  assert.match(printAudit.status, /系统分享面板/);
+  assert.equal(printAudit.printCalled, true);
+  assert.match(printAudit.status, /打印内容已准备好/);
   await context.close();
 }
 
@@ -178,5 +184,5 @@ if (failures.length) {
   console.error(JSON.stringify({ checked: games.length * viewports.length, failures }, null, 2));
   process.exitCode = 1;
 } else {
-  console.log(`PASS iPad layout matrix: ${games.length * viewports.length} game views + print/share shell`);
+  console.log(`PASS iPad layout matrix: ${games.length * viewports.length} game views + 26-page HTML print shell`);
 }
